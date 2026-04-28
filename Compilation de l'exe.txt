@@ -1,0 +1,4 @@
+Dans un powershell:
+
+
+& "C:\Users\vojnovic\AppData\Roaming\Python\Python314\Scripts\pyinstaller.exe" --onedir --windowed --name NOX_Manager --icon=LOGO_Nox.ico --splash flash.png --add-data "wikidocs_qt;wikidocs_qt" --add-data ".\Template_BDD_CE_N0X.xlsx;." --add-data ".\Template_BDD_CECC_N0X.xlsx;." --add-data ".\Template_BDD_DPE_N0X.xlsx;." qt_main.py

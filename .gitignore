@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# PyInstaller
+build/
+dist/
+*.spec
+
+# Runtime
+runtime/
+
+# Bases locales
+*.db
+*.sqlite
+*.nox
+
+# Exports
+exports/
+Documents/
+Projects/
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
