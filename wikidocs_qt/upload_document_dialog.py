@@ -382,80 +382,166 @@ ZW-Zimbabwe
 """.strip().splitlines()
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Toggle switch  (QCheckBox styled as iOS-like switch)
+# ThreeStateToggle  –  N/A (0)  |  Non défini (1)  |  Applicable (2)
 # ──────────────────────────────────────────────────────────────────────────────
-class ToggleSwitch(QtWidgets.QCheckBox):
-    """A checkbox that renders as a pill-shaped toggle."""
+class ThreeStateToggle(QtWidgets.QWidget):
+    """
+    Un interrupteur à trois positions affichées côte à côte.
 
-    _H = 24
-    _W = 44
+    États :
+        0 → N/A          (rouge   #ef4444)
+        1 → Non défini   (gris    #9ca3af)
+        2 → Applicable   (bleu    #2563eb)
+    """
 
-    def __init__(self, checked: bool = True, parent=None):
+    stateChanged = QtCore.Signal(int)
+
+    # Libellés et couleurs de chaque état
+    _STATES = [
+        ("N/A",        "#ef4444", "#ffffff"),   # label, bg_active, text_active
+        ("Non défini", "#9ca3af", "#ffffff"),
+        ("Applicable", "#2563eb", "#ffffff"),
+    ]
+
+    _H = 28          # hauteur du widget
+    _BTN_W = 76      # largeur d'un bouton
+    _RADIUS = 7      # arrondi
+
+    def __init__(self, state: int = 1, parent=None):
+        """*state* : 0=N/A, 1=Non défini, 2=Applicable."""
         super().__init__(parent)
-        self.setChecked(checked)
-        self.setFixedSize(self._W, self._H)
+        self._state = max(0, min(2, state))
         self.setCursor(QtCore.Qt.PointingHandCursor)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
-        self._anim_pos = 1.0 if checked else 0.0
-        self._anim = QtCore.QPropertyAnimation(self, b"_pos", self)
-        self._anim.setDuration(160)
+        total_w = self._BTN_W * 3 + 4          # +4 pour les marges internes
+        self.setFixedSize(total_w, self._H)
+
+        # Animation de la position du curseur (valeur flottante 0..2)
+        self._anim_state = float(self._state)
+        self._anim = QtCore.QPropertyAnimation(self, b"_anim_val", self)
+        self._anim.setDuration(180)
         self._anim.setEasingCurve(QtCore.QEasingCurve.InOutQuad)
-        self.stateChanged.connect(self._start_anim)
 
-    def hitButton(self, pos):
-        return self.rect().contains(pos)
+    # ── Propriété animée ──────────────────────────────────────────────────────
 
-    def mouseReleaseEvent(self, event):
-        if event.button() == QtCore.Qt.LeftButton:
-            self.setChecked(not self.isChecked())
-            event.accept()
-            return
-        super().mouseReleaseEvent(event)
+    def _get_anim_val(self) -> float:
+        return self._anim_state
 
-    def keyPressEvent(self, event):
-        if event.key() in (QtCore.Qt.Key_Space, QtCore.Qt.Key_Return, QtCore.Qt.Key_Enter):
-            self.setChecked(not self.isChecked())
-            event.accept()
-            return
-        super().keyPressEvent(event)
-
-    def _get_pos(self):
-        return self._anim_pos
-
-    def _set_pos(self, v):
-        self._anim_pos = v
+    def _set_anim_val(self, v: float):
+        self._anim_state = v
         self.update()
 
-    _pos = QtCore.Property(float, _get_pos, _set_pos)
+    _anim_val = QtCore.Property(float, _get_anim_val, _set_anim_val)
 
-    def _start_anim(self, state):
-        target = 1.0 if self.isChecked() else 0.0
-        self._anim.stop()
-        self._anim.setStartValue(self._anim_pos)
-        self._anim.setEndValue(target)
-        self._anim.start()
+    # ── API publique ──────────────────────────────────────────────────────────
+
+    def get_state(self) -> int:
+        return self._state
+
+    def set_state(self, state: int, animated: bool = True):
+        state = max(0, min(2, state))
+        if state == self._state and not animated:
+            return
+        old = self._state
+        self._state = state
+        if animated:
+            self._anim.stop()
+            self._anim.setStartValue(self._anim_state)
+            self._anim.setEndValue(float(state))
+            self._anim.start()
+        else:
+            self._anim_state = float(state)
+            self.update()
+        if old != state:
+            self.stateChanged.emit(state)
+
+    def is_applicable(self) -> bool:
+        return self._state == 2
+
+    def is_not_applicable(self) -> bool:
+        return self._state == 0
+
+    def is_undefined(self) -> bool:
+        return self._state == 1
+
+    # ── Interactions ──────────────────────────────────────────────────────────
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.LeftButton:
+            idx = self._index_at(event.position().x() if hasattr(event, 'position') else event.x())
+            if idx is not None:
+                self.set_state(idx)
+            event.accept()
+
+    def keyPressEvent(self, event):
+        if event.key() in (QtCore.Qt.Key_Right, QtCore.Qt.Key_Plus):
+            self.set_state(min(2, self._state + 1))
+        elif event.key() in (QtCore.Qt.Key_Left, QtCore.Qt.Key_Minus):
+            self.set_state(max(0, self._state - 1))
+        else:
+            super().keyPressEvent(event)
+
+    def _index_at(self, x: float) -> int | None:
+        for i in range(3):
+            bx = i * self._BTN_W
+            if bx <= x < bx + self._BTN_W:
+                return i
+        return None
+
+    # ── Rendu ─────────────────────────────────────────────────────────────────
 
     def paintEvent(self, _event):
         p = QtGui.QPainter(self)
         p.setRenderHint(QtGui.QPainter.Antialiasing)
 
-        track_color = QtGui.QColor("#2563eb") if self.isChecked() else QtGui.QColor("#d1d5db")
+        W, H = self.width(), self._H
+        r = self._RADIUS
+
+        # Fond général (piste)
         p.setPen(QtCore.Qt.NoPen)
-        p.setBrush(track_color)
-        p.drawRoundedRect(0, 0, self._W, self._H, self._H // 2, self._H // 2)
+        p.setBrush(QtGui.QColor("#f3f4f6"))
+        p.drawRoundedRect(0, 0, W, H, r, r)
 
-        margin = 3
-        travel = self._W - self._H
-        x = margin + self._anim_pos * travel
+        # Curseur glissant (interpolé)
+        cursor_x = self._anim_state * self._BTN_W
+        color_a = QtGui.QColor(self._STATES[max(0, round(self._anim_state) - 1)][1]
+                               if self._anim_state > 0 else self._STATES[0][1])
+        color_b = QtGui.QColor(self._STATES[min(2, round(self._anim_state))][1])
+        # Couleur interpolée entre les deux états adjacents
+        t = self._anim_state - int(self._anim_state)
+        r_c = int(color_a.red()   * (1 - t) + color_b.red()   * t)
+        g_c = int(color_a.green() * (1 - t) + color_b.green() * t)
+        b_c = int(color_a.blue()  * (1 - t) + color_b.blue()  * t)
+        cursor_color = QtGui.QColor(self._STATES[self._state][1])  # couleur cible nette
 
-        p.setBrush(QtGui.QColor("#ffffff"))
-        thumb_d = self._H - 2 * margin
-        p.drawEllipse(QtCore.QRectF(x, margin, thumb_d, thumb_d))
+        p.setBrush(cursor_color)
+        p.drawRoundedRect(
+            QtCore.QRectF(cursor_x + 1, 1, self._BTN_W - 2, H - 2),
+            r - 1, r - 1
+        )
+
+        # Labels
+        font = self.font()
+        font.setPointSize(8)
+        font.setBold(False)
+        p.setFont(font)
+
+        for i, (label, bg, fg) in enumerate(self._STATES):
+            bx = i * self._BTN_W
+            rect = QtCore.QRectF(bx, 0, self._BTN_W, H)
+
+            if i == self._state:
+                p.setPen(QtGui.QColor(fg))
+            else:
+                p.setPen(QtGui.QColor("#6b7280"))
+
+            p.drawText(rect, QtCore.Qt.AlignCenter, label)
+
         p.end()
 
     def sizeHint(self):
-        return QtCore.QSize(self._W, self._H)
+        return QtCore.QSize(self._BTN_W * 3, self._H)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -464,11 +550,14 @@ class ToggleSwitch(QtWidgets.QCheckBox):
 class RequirementRow(QtWidgets.QFrame):
     toggled = QtCore.Signal()
 
+    # état par défaut : 1 = Non défini
+    _DEFAULT_STATE = 1
+
     def __init__(self, code: str, description: str,
                  default_on: bool = True, parent=None):
         super().__init__(parent)
         self.setObjectName("reqRow")
-        self.setFixedHeight(48)
+        self.setFixedHeight(52)
         self._code = code
 
         lay = QtWidgets.QHBoxLayout(self)
@@ -489,10 +578,15 @@ class RequirementRow(QtWidgets.QFrame):
         desc_lbl = QtWidgets.QLabel(description, self)
         desc_lbl.setObjectName("reqDesc")
 
-        # Toggle switch (right — "Applicable")
-        self._toggle = ToggleSwitch(checked=default_on, parent=self)
-        self._toggle.setToolTip("Applicable / Non applicable")
-        self._toggle.stateChanged.connect(lambda: self.toggled.emit())
+        # Interrupteur 3 états  (N/A=0 | Non défini=1 | Applicable=2)
+        # Par défaut : "Non défini" (1) — l'utilisateur doit choisir
+        self._toggle = ThreeStateToggle(state=self._DEFAULT_STATE, parent=self)
+        self._toggle.setToolTip(
+            "N/A : non applicable à cette référence\n"
+            "Non défini : à renseigner\n"
+            "Applicable : couvert par ce justificatif"
+        )
+        self._toggle.stateChanged.connect(lambda _s: self.toggled.emit())
 
         lay.addWidget(self._check)
         lay.addWidget(name_lbl)
@@ -503,17 +597,37 @@ class RequirementRow(QtWidgets.QFrame):
     def code(self) -> str:
         return self._code
 
+    # ── Compatibilité avec le reste du code ──────────────────────────────────
+
     def is_applicable(self) -> bool:
-        return self._toggle.isChecked()
+        """Vrai uniquement si l'état est explicitement «Applicable»."""
+        return self._toggle.is_applicable()
+
+    def is_not_applicable(self) -> bool:
+        """Vrai si l'état est «N/A»."""
+        return self._toggle.is_not_applicable()
+
+    def is_undefined(self) -> bool:
+        """Vrai si l'état est «Non défini»."""
+        return self._toggle.is_undefined()
+
+    def get_state(self) -> int:
+        """0=N/A, 1=Non défini, 2=Applicable."""
+        return self._toggle.get_state()
+
+    def set_state(self, state: int):
+        self._toggle.set_state(state, animated=False)
+
+    # Rétro-compatibilité avec les appels set_applicable(bool)
+    def set_applicable(self, v: bool):
+        """True → Applicable (2), False → N/A (0)."""
+        self._toggle.set_state(2 if v else 0, animated=False)
 
     def is_row_checked(self) -> bool:
         return self._check.isChecked()
 
     def set_row_checked(self, v: bool):
         self._check.setChecked(v)
-
-    def set_applicable(self, v: bool):
-        self._toggle.setChecked(v)
 
     def matches(self, text: str) -> bool:
         return text.lower() in self._code.lower()
@@ -725,16 +839,19 @@ class CEPage(QtWidgets.QWidget):
     def set_not_applicable_codes(self, codes: list[str]):
         codes_set = set(codes or [])
         for row in self._req_rows:
-            row.set_applicable(row.code not in codes_set)
+            if row.code in codes_set:
+                row.set_state(0)   # N/A
+            else:
+                row.set_state(2)   # Applicable
 
     def not_applicable_requirements(self) -> tuple[list[str], list[str]]:
         codes, labels = [], []
         for row in self._req_rows:
-            if not row.is_applicable():
+            if row.is_not_applicable():
                 codes.append(row.code)
                 labels.append(row.code)
         return codes, labels
-
+    
     def applicable_count(self) -> int:
         return sum(1 for r in self._req_rows if r.is_applicable())
 
@@ -762,12 +879,22 @@ class CEPage(QtWidgets.QWidget):
             row.setVisible(row.matches(text) if text else True)
 
     def _select_all(self):
+        """Passe toutes les exigences visibles à «Applicable» (état 2)."""
         for row in self._req_rows:
-            row.set_applicable(True)
+            if row.isVisible():
+                row.set_state(2)
 
     def _deselect_all(self):
+        """Passe toutes les exigences visibles à «N/A» (état 0)."""
         for row in self._req_rows:
-            row.set_applicable(False)
+            if row.isVisible():
+                row.set_state(0)
+    def unknown_applicability_requirements(self) -> list[str]:
+        return [
+            row.code
+            for row in self._req_rows
+            if row.is_undefined()
+        ]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -893,13 +1020,16 @@ class DPEPage(QtWidgets.QWidget):
     def set_not_applicable_codes(self, codes: list[str]):
         codes_set = set(codes or [])
         for row in self._req_rows:
-            row.set_applicable(row.code not in codes_set)
+            if row.code in codes_set:
+                row.set_state(0)   # N/A
+            else:
+                row.set_state(2)   # Applicable
         self._refresh_counter()
 
     def not_applicable_requirements(self) -> tuple[list[str], list[str]]:
         codes, labels = [], []
         for row in self._req_rows:
-            if not row.is_applicable():
+            if row.is_not_applicable():
                 codes.append(row.code)
                 labels.append(row.code)
         return codes, labels
@@ -923,9 +1053,11 @@ class DPEPage(QtWidgets.QWidget):
 
     def _refresh_counter(self):
         applicable = sum(1 for r in self._req_rows if r.is_applicable())
+        na = sum(1 for r in self._req_rows if r.is_not_applicable())
+        undefined = sum(1 for r in self._req_rows if r.is_undefined())
         total = len(self._req_rows)
         self._counter_lbl.setText(
-            f"{applicable} / {total} exigence(s) marquée(s) comme applicable(s)"
+            f"{applicable} applicable(s) · {na} N/A · {undefined} non défini(s)  —  {total} exigences"
         )
 
     def _filter(self, text: str):
@@ -933,12 +1065,23 @@ class DPEPage(QtWidgets.QWidget):
             row.setVisible(row.matches(text) if text else True)
 
     def _select_all(self):
+        """Passe toutes les exigences visibles à «Applicable» (état 2)."""
         for row in self._req_rows:
-            row.set_applicable(True)
+            if row.isVisible():
+                row.set_state(2)
 
     def _deselect_all(self):
+        """Passe toutes les exigences visibles à «N/A» (état 0)."""
         for row in self._req_rows:
-            row.set_applicable(False)
+            if row.isVisible():
+                row.set_state(0)
+
+    def unknown_applicability_requirements(self) -> list[str]:
+        return [
+            row.code
+            for row in self._req_rows
+            if row.is_undefined()
+        ]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1592,8 +1735,24 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         )
 
         if current in ("CE", "DPE"):
+            # Compter aussi les "Non défini" pour avertir l'utilisateur
+            undefined_count = 0
+            if current == "CE":
+                undefined_count = sum(1 for r in self._ce_page._req_rows if r.is_undefined())
+            elif current == "DPE":
+                undefined_count = sum(1 for r in self._dpe_page._req_rows if r.is_undefined())
+
             if not codes and not all_not_applicable:
-                return False, f"Pour un justificatif {current}, cochez au moins une exigence applicable ou déclarez toutes les exigences non applicables."
+                return False, (
+                    f"Pour un justificatif {current}, définissez l'applicabilité de chaque exigence "
+                    f"(au moins une «Applicable» ou toutes à «N/A»)."
+                )
+
+            if undefined_count > 0:
+                return False, (
+                    f"{undefined_count} exigence(s) sont encore «Non défini(es)». "
+                    f"Veuillez indiquer «Applicable» ou «N/A» pour chacune."
+                )
 
             if not self.selected_file and not all_not_applicable:
                 return False, "Merci de choisir un fichier."
@@ -1724,4 +1883,3 @@ class UploadDocumentDialog(QtWidgets.QDialog):
             return self._dpe_page.not_applicable_requirements()
 
         return [], []
-    

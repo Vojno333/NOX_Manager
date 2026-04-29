@@ -269,7 +269,7 @@ class DetailPanel(QtWidgets.QFrame):
                 border-bottom:1px solid {GRAY_BORDER};
                 padding:5px 8px; font-weight:bold; color:{DARK};
             }}
-            QTableWidget::item {{ padding:5px 8px; color:{DARK}; }}
+            QTableWidget::item {{ padding:5px 8px; }}
             QTableWidget::item:selected {{ background:{BLUE_LIGHT}; color:{BLUE}; }}
         """)
         return t
@@ -356,6 +356,8 @@ class DetailPanel(QtWidgets.QFrame):
                     app_item.setForeground(QColor(ORANGE_WARN))
                 elif applicability == "Applicable":
                     app_item.setForeground(QColor(GREEN_OK))
+                elif applicability == "Non défini":
+                    app_item.setForeground(QColor(GRAY_TEXT))
 
                 app_item.setTextAlignment(QtCore.Qt.AlignCenter)
                 self.tbl_docs.setItem(i, 1, app_item)
@@ -411,7 +413,7 @@ class DetailPanel(QtWidgets.QFrame):
 
 
 class MainTab(QtWidgets.QWidget):
-    COLUMNS = ["Fournisseur", "Référence", "Type", "Nombre de documents", "Complétude"]
+    COLUMNS = ["Fournisseur","Référence T","Libellé équipement","MNP","N° de commande","Type","Nombre de documents","Complétude",]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -841,7 +843,13 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             data = latest_by_code.get(normalized_code)
 
             is_na = self._is_not_applicable(docs, code)
-            applicability = "Non applicable" if is_na else "Applicable"
+
+            if is_na:
+                applicability = "Non applicable"
+            elif data:
+                applicability = "Applicable"
+            else:
+                applicability = "Non défini"
 
             label = data["label"] if data and data.get("label") else default_label
 
@@ -986,19 +994,30 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         return source_type == justif_type or justif_type in stored_in_bdds
 
     def _build_table_rows(self) -> list[dict]:
+        by_supplier_ref, by_supplier_ref_type = self._group_uploaded_documents()
         pairs = self._scan_supplier_reference_pairs()
-        by_supplier_ref, _by_supplier_ref_type = self._group_uploaded_documents()
 
-        rows: list[dict] = []
+        rows_meta = {
+            (
+                str(r.get("supplier", "")).strip(),
+                str(r.get("reference", "")).strip(),
+            ): r
+            for r in self.project_data.get("rows", []) or []
+        }
+
+        rows = []
+
         for supplier, reference in pairs:
-            for justif_type in self.enabled_bdds:
-                all_docs_for_ref = by_supplier_ref.get((supplier, reference), [])
+            meta = rows_meta.get((supplier, reference), {})
 
+            for justif_type in self.enabled_bdds:
                 docs = [
-                    doc for doc in all_docs_for_ref
+                    doc for doc in by_supplier_ref.get((supplier, reference), [])
                     if self._doc_applies_to_type(doc, justif_type)
                 ]
+
                 doc_count = self._count_documents_in_folder(supplier, reference, justif_type)
+
                 if justif_type == "CE":
                     completion_value = self._compute_ce_dpe_completion(
                         docs,
@@ -1019,12 +1038,16 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
                 rows.append({
                     "supplier": supplier,
                     "reference": reference,
+                    "label": meta.get("label", ""),
+                    "mnp": meta.get("mnp", ""),
+                    "order_number": meta.get("order_number", ""),
                     "type": justif_type,
                     "documents": doc_count,
-                    "completion": f"{round(completion_value * 100)} %",
+                    "completion": f"{int(round(completion_value * 100))} %",
                     "completion_value": completion_value,
                     "docs": docs,
                 })
+
         return rows
 
     def _compute_requirement_score(self, docs: list[dict], code: str) -> float:
@@ -1086,20 +1109,14 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
 
         for row_index, row in enumerate(rows):
-            values = [
-                row["supplier"],
-                row["reference"],
-                row["type"],
-                str(row["documents"]),
-                row["completion"],
-            ]
+            values = [row["supplier"],row["reference"],row.get("label", ""),row.get("mnp", ""),row.get("order_number", ""),row["type"],str(row["documents"]),row["completion"],]
             for col_index, value in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(value)
-                if col_index == 4:
+                if col_index == 7:
                     pct = row.get("completion_value", 0.0)
                     color = GREEN_OK if pct >= 1.0 else (ORANGE_WARN if pct > 0 else RED_KO)
                     item.setForeground(QtGui.QBrush(QtGui.QColor(color)))
-                if col_index in (3, 4):
+                if col_index in (6, 7):
                     item.setTextAlignment(QtCore.Qt.AlignCenter)
                 else:
                     item.setTextAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft)

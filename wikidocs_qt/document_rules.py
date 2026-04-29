@@ -18,11 +18,11 @@ DPE_REQUIREMENTS = [
 ]
 
 CE_REQUIREMENTS = [
-    ("2006/42/UE", "Directive 2006/42/UE"),
+    ("2006/42/UE", "Directive Machine"),
     ("2011/65/UE", "RoHS"),
-    ("2014/30/UE", "Directive 2014/30/UE"),
-    ("2014/68/UE", "Directive 2014/68/UE"),
-    ("AUTRES", "Autres"),
+    ("2014/30/UE", "Compatibilité électromagnétique EMC"),
+    ("2014/68/UE", "Directive équipement sous préssion"),
+    ("AUTRES", "---"),
 ]
 
 CECC_FREE_FIELDS = [

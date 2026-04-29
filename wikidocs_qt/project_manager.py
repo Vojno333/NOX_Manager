@@ -33,11 +33,13 @@ def _normalize_rows(rows):
             supplier = str(row.get("supplier", "")).strip()
             reference = str(row.get("reference", "")).strip()
             label = str(row.get("label", "")).strip()
+            mnp = str(row.get("mnp", "")).strip()
             order_number = str(row.get("order_number", "")).strip()
         else:
             supplier = str(row[0]).strip()
             reference = str(row[1]).strip()
             label = ""
+            mnp = ""
             order_number = ""
 
         if not supplier or not reference:
@@ -53,6 +55,7 @@ def _normalize_rows(rows):
             "supplier": supplier,
             "reference": reference,
             "label": label,
+            "mnp": mnp,
             "order_number": order_number,
         })
 

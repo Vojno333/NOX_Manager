@@ -302,6 +302,11 @@ class ReferenceRow(QtWidgets.QFrame):
         self.label_edit.setMinimumWidth(160)
         self.label_edit.textChanged.connect(self._on_changed)
 
+        self.mnp_edit = QtWidgets.QLineEdit(self)
+        self.mnp_edit.setPlaceholderText("MNP")
+        self.mnp_edit.setMinimumWidth(120)
+        self.mnp_edit.textChanged.connect(self._on_changed)
+
         self.order_edit = QtWidgets.QLineEdit(self)
         self.order_edit.setPlaceholderText("N° de commande")
         self.order_edit.setMinimumWidth(140)
@@ -316,6 +321,7 @@ class ReferenceRow(QtWidgets.QFrame):
         lay.addWidget(self.supplier_edit, 2)
         lay.addWidget(self.ref_edit, 1)
         lay.addWidget(self.label_edit, 2)
+        lay.addWidget(self.mnp_edit, 1)
         lay.addWidget(self.order_edit, 2)
         lay.addWidget(del_btn)
 
@@ -332,6 +338,7 @@ class ReferenceRow(QtWidgets.QFrame):
             self.supplier_edit.text().strip(),
             self.ref_edit.text().strip(),
             self.label_edit.text().strip(),
+            self.mnp_edit.text().strip(),
             self.order_edit.text().strip(),
         ])
 
@@ -343,6 +350,7 @@ class ReferenceRow(QtWidgets.QFrame):
             "supplier": self.supplier_edit.text().strip(),
             "reference": self.ref_edit.text().strip(),
             "label": self.label_edit.text().strip(),
+            "mnp": self.mnp_edit.text().strip(),
             "order_number": self.order_edit.text().strip(),
         }
 
@@ -351,6 +359,7 @@ class ReferenceRow(QtWidgets.QFrame):
         self.ref_edit.clear()
         self.label_edit.clear()
         self.order_edit.clear()
+        self.mnp_edit.clear()
 
     def set_index(self, n: int):
         self.index_label.setText(str(n))
@@ -630,7 +639,8 @@ class NewProjectDialog(QtWidgets.QDialog):
         _th("#", fixed_w=24)
         _th("Fournisseur *", 2)
         _th("Référence *", 1)
-        _th("Libellé", 2)
+        _th("Libellé équipement", 2)
+        _th("MNP", 1)
         _th("N° de commande", 2)
         _th("Actions", fixed_w=40)
         manual_lay.addWidget(col_header)
@@ -801,7 +811,7 @@ class NewProjectDialog(QtWidgets.QDialog):
         self._tab_stack.addWidget(page_bulk)
 
         # Initial batch for manual tab
-        self._add_batch_rows()
+        #self._add_batch_rows()
         return card
 
     def _switch_tab(self, index: int):
@@ -1033,6 +1043,7 @@ class NewProjectDialog(QtWidgets.QDialog):
         default_location = self.project_manager.get_default_location()
         if default_location:
             self.location_edit.setText(default_location)
+        self._add_single_row()
 
     def _browse_location(self):
         start_dir = self.location_edit.text().strip() or str(Path.home())
@@ -1165,6 +1176,7 @@ class NewProjectDialog(QtWidgets.QDialog):
             row.supplier_edit.setText(data.get("supplier", ""))
             row.ref_edit.setText(data.get("reference", ""))
             row.label_edit.setText(data.get("label", ""))
+            row.mnp_edit.setText(data.get("mnp", ""))
             row.order_edit.setText(data.get("order_number", ""))
 
         self._rows.append(row)
