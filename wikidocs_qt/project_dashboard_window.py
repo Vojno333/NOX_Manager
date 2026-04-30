@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from pathlib import Path
-from collections import defaultdict
-from datetime import datetime
-
 import os
 import sys
 import subprocess
+from pathlib import Path
+from collections import defaultdict
+from datetime import datetime
 
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt
@@ -19,420 +18,559 @@ from .export_templates import export_project_templates
 from .document_rules import CE_REQUIREMENTS, DPE_REQUIREMENTS, JUSTIFICATION_TYPES
 from .project_manager import ProjectManager
 from .project_structure import create_folders_and_subfolders
-from .project_settings_dialog import ProjectSettingsDialog
 from .new_project_dialog import NewProjectDialog
 
+# ── Palette ───────────────────────────────────────────────────────────────────
+TOPBAR_BG   = "#111827"
+TOPBAR_FG   = "#CBD5E1"
+WHITE       = "#FFFFFF"
+BG          = "#F6F8FB"
+BLUE        = "#2563EB"
+BLUE_LIGHT  = "#EFF6FF"
+BLUE_DARK   = "#1D4ED8"
+GREEN_OK    = "#059669"
+GREEN_BG    = "#D1FAE5"
+ORANGE_WARN = "#D97706"
+ORANGE_BG   = "#FEF3C7"
+RED_KO      = "#DC2626"
+RED_BG      = "#FEE2E2"
+PURPLE      = "#7C3AED"
+PURPLE_BG   = "#EDE9FE"
+GRAY_BORDER = "#E5E7EB"
+GRAY_CARD   = "#D9E2EC"
+GRAY_TEXT   = "#6B7280"
+GRAY_LIGHT  = "#F8FAFC"
+DARK        = "#111827"
+ALT_ROW     = "#F8FAFC"
+SEL_BG      = "#EFF6FF"
+SEL_FG      = BLUE
 
+# Type badge colours  (bg, fg)
+TYPE_COLORS: dict[str, tuple[str, str]] = {
+    "CE":   (ORANGE_BG,  "#92400E"),
+    "CECC": (PURPLE_BG,  "#5B21B6"),
+    "DPE":  (GREEN_BG,   "#065F46"),
+}
 
+# KPI bar colours
+KPI_BAR_COLORS: dict[str, str] = {
+    "CE":   ORANGE_WARN,
+    "CECC": PURPLE,
+    "DPE":  GREEN_OK,
+}
 
-# Palette / style
-BLUE = "#1565C0"
-BLUE_LIGHT = "#E8F0FE"
-GREEN_OK = "#2E7D32"
-ORANGE_WARN = "#E65100"
-RED_KO = "#C62828"
-SEL_BG = "#1565C0"
-ALT_ROW = "#F7F8FA"
-WHITE = "#FFFFFF"
-GRAY_BORDER = "#D0D5DD"
-GRAY_TEXT = "#6B7280"
-DARK = "#111827"
-BG = "#F3F4F6"
+# ── Fonts ─────────────────────────────────────────────────────────────────────
+F_BODY   = QFont("Segoe UI", 9)
+F_BOLD   = QFont("Segoe UI", 9, QFont.Bold)
+F_SMALL  = QFont("Segoe UI", 8)
+F_TINY   = QFont("Segoe UI", 7)
+F_H1     = QFont("Segoe UI", 13, QFont.Bold)
+F_TOPBAR = QFont("Segoe UI", 9)
 
-F_BODY = QFont("Segoe UI", 9)
-F_BOLD = QFont("Segoe UI", 9, QFont.Bold)
-F_SMALL = QFont("Segoe UI", 8)
-F_H1 = QFont("Segoe UI", 12, QFont.Bold)
-
-
-def hline() -> QtWidgets.QFrame:
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def _hline() -> QtWidgets.QFrame:
     f = QtWidgets.QFrame()
     f.setFrameShape(QtWidgets.QFrame.HLine)
-    f.setStyleSheet(f"color:{GRAY_BORDER}; max-height:1px; background:{GRAY_BORDER};")
+    f.setFixedHeight(1)
+    f.setStyleSheet(f"background:{GRAY_BORDER}; border:none;")
     return f
 
+def _make_label(text: str, font: QFont = F_BODY, color: str = DARK) -> QtWidgets.QLabel:
+    lbl = QtWidgets.QLabel(text)
+    lbl.setFont(font)
+    lbl.setStyleSheet(f"color:{color}; background:transparent;")
+    return lbl
 
-class KpiWidget(QtWidgets.QWidget):
-    def __init__(self, label: str, value: int = 0, bar_color: str = BLUE, parent=None):
+# ── KPI card ──────────────────────────────────────────────────────────────────
+class KpiCard(QtWidgets.QFrame):
+    """White card with icon, value, subtitle and optional progress bar."""
+
+    def __init__(self, icon: str, title: str, value: str = "—",
+                 subtitle: str = "", bar_color: str = "", icon_bg: str = "#F0F4FF",
+                 parent=None):
         super().__init__(parent)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        self._value = max(0, min(100, int(value)))
         self._bar_color = bar_color
-        self._bar_bg: QtWidgets.QFrame | None = None
         self._bar_fill: QtWidgets.QFrame | None = None
-        self._pct_label: QtWidgets.QLabel | None = None
-        self._build(label)
+        self._bar_bg:   QtWidgets.QFrame | None = None
+        self._value_lbl: QtWidgets.QLabel | None = None
+        self._pct_value = 0
 
-    def _build(self, label: str):
-        v = QtWidgets.QVBoxLayout(self)
-        v.setContentsMargins(8, 4, 8, 4)
-        v.setSpacing(3)
+        self.setFixedHeight(80)
+        self.setStyleSheet(f"""
+            KpiCard {{
+                background:{WHITE};
+                border:1px solid {GRAY_CARD};
+                border-radius:12px;
+            }}
+        """)
 
-        row = QtWidgets.QHBoxLayout()
-        row.setSpacing(4)
+        h = QtWidgets.QHBoxLayout(self)
+        h.setContentsMargins(14, 10, 14, 10)
+        h.setSpacing(12)
 
-        lbl = QtWidgets.QLabel(label)
-        lbl.setFont(F_SMALL)
-        lbl.setStyleSheet(f"color:{GRAY_TEXT};")
+        icon_frame = QtWidgets.QFrame()
+        icon_frame.setFixedSize(36, 36)
+        icon_frame.setStyleSheet(f"background:{icon_bg}; border-radius:8px;")
+        icon_lbl = QtWidgets.QLabel(icon, icon_frame)
+        icon_lbl.setAlignment(Qt.AlignCenter)
+        icon_lbl.setStyleSheet("font-size:16px; background:transparent;")
+        il = QtWidgets.QVBoxLayout(icon_frame)
+        il.setContentsMargins(0, 0, 0, 0)
+        il.addWidget(icon_lbl)
+        h.addWidget(icon_frame)
 
-        self._pct_label = QtWidgets.QLabel(f"{self._value} %")
-        self._pct_label.setFont(F_BOLD)
-        self._pct_label.setStyleSheet(f"color:{DARK};")
+        col = QtWidgets.QVBoxLayout()
+        col.setSpacing(1)
+        col.setContentsMargins(0, 0, 0, 0)
 
-        row.addWidget(lbl)
-        row.addWidget(self._pct_label)
-        row.addStretch()
-        v.addLayout(row)
+        title_lbl = _make_label(title, F_SMALL, GRAY_TEXT)
+        col.addWidget(title_lbl)
 
-        self._bar_bg = QtWidgets.QFrame()
-        self._bar_bg.setFixedHeight(4)
-        self._bar_bg.setMinimumWidth(70)
-        self._bar_bg.setStyleSheet("background:#E5E7EB; border-radius:2px;")
-        v.addWidget(self._bar_bg)
+        self._value_lbl = _make_label(value, F_H1, DARK)
+        col.addWidget(self._value_lbl)
 
-        self._bar_fill = QtWidgets.QFrame(self._bar_bg)
-        self._bar_fill.setFixedHeight(4)
-        self._bar_fill.setStyleSheet(f"background:{self._bar_color}; border-radius:2px;")
-        self._bar_fill.setFixedWidth(0)
+        if subtitle:
+            sub_lbl = _make_label(subtitle, F_TINY, GRAY_TEXT)
+            col.addWidget(sub_lbl)
 
-    def set_value(self, value: int):
-        self._value = max(0, min(100, int(value)))
-        if self._pct_label:
-            self._pct_label.setText(f"{self._value} %")
-        self._update_fill_width()
+        if bar_color:
+            bar_bg = QtWidgets.QFrame()
+            bar_bg.setFixedHeight(3)
+            bar_bg.setStyleSheet("background:#E5E7EB; border-radius:2px;")
+            self._bar_bg = bar_bg
+            bar_fill = QtWidgets.QFrame(bar_bg)
+            bar_fill.setFixedHeight(3)
+            bar_fill.setStyleSheet(f"background:{bar_color}; border-radius:2px;")
+            bar_fill.setFixedWidth(0)
+            self._bar_fill = bar_fill
+            col.addWidget(bar_bg)
+
+        h.addLayout(col)
+
+    def set_value(self, text: str, pct: int = -1):
+        if self._value_lbl:
+            self._value_lbl.setText(text)
+        if pct >= 0:
+            self._pct_value = pct
+            self._refresh_bar()
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self._update_fill_width()
+        self._refresh_bar()
 
-    def _update_fill_width(self):
+    def _refresh_bar(self):
         if self._bar_fill and self._bar_bg:
-            w = max(0, self._bar_bg.width())
-            fill = 0 if self._value <= 0 else max(4, int(w * self._value / 100))
+            w = self._bar_bg.width()
+            fill = 0 if self._pct_value <= 0 else max(4, int(w * self._pct_value / 100))
             self._bar_fill.setFixedWidth(fill)
 
-
+# ── Filter chip ───────────────────────────────────────────────────────────────
 class FilterChip(QtWidgets.QPushButton):
     def __init__(self, label: str, parent=None):
         super().__init__(parent)
         self.base_label = label
         self.setText(f"{label}  ▾")
-        self.setFont(F_BODY)
+        self.setFont(F_SMALL)
         self.setCursor(Qt.PointingHandCursor)
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        self.setFixedHeight(28)
-        self._refresh_style(False)
+        self.setFixedHeight(30)
+        self._set_style(False)
 
     def set_active(self, active: bool):
         self.setText(f"{self.base_label}  {'●' if active else '▾'}")
-        self._refresh_style(active)
+        self._set_style(active)
 
-    def _refresh_style(self, active: bool):
-        bg = BLUE_LIGHT if active else WHITE
-        border = BLUE if active else GRAY_BORDER
-        color = BLUE if active else DARK
+    def _set_style(self, active: bool):
+        bg     = BLUE_LIGHT if active else WHITE
+        border = BLUE       if active else GRAY_BORDER
+        color  = BLUE       if active else DARK
+        fw     = "700"      if active else "400"
         self.setStyleSheet(f"""
             QPushButton {{
                 background:{bg}; border:1px solid {border};
-                border-radius:14px; padding:3px 14px; color:{color};
-                font-weight:{'700' if active else '400'};
+                border-radius:15px; padding:2px 14px; color:{color};
+                font-weight:{fw}; font-size:8pt;
             }}
             QPushButton:hover   {{ background:{BLUE_LIGHT}; border-color:{BLUE}; color:{BLUE}; }}
             QPushButton:pressed {{ background:#DBEAFE; }}
         """)
 
+# ── Type badge label ───────────────────────────────────────────────────────────
+class TypeBadge(QtWidgets.QLabel):
+    def __init__(self, type_: str, parent=None):
+        super().__init__(type_, parent)
+        bg, fg = TYPE_COLORS.get(type_, ("#F1F5F9", "#374151"))
+        self.setStyleSheet(f"""
+            background:{bg}; color:{fg};
+            border-radius:10px; padding:2px 10px;
+            font-size:9pt; font-weight:700;
+        """)
+        self.setFixedHeight(22)
 
+# ── Completion badge ──────────────────────────────────────────────────────────
+def _completion_badge(pct_str: str) -> QtWidgets.QLabel:
+    lbl = QtWidgets.QLabel(pct_str)
+    lbl.setAlignment(Qt.AlignCenter)
+    lbl.setFont(F_BOLD)
+    try:
+        val = int(str(pct_str).replace("%", "").replace(" ", ""))
+    except ValueError:
+        val = -1
+    if val == 100:
+        bg, fg = GREEN_BG,  "#065F46"
+    elif val == 0:
+        bg, fg = RED_BG,    "#991B1B"
+    else:
+        bg, fg = ORANGE_BG, "#92400E"
+    lbl.setStyleSheet(f"""
+        background:{bg}; color:{fg};
+        border-radius:10px; padding:1px 10px;
+        font-size:9pt; font-weight:700;
+    """)
+    return lbl
+
+# ── Detail panel ──────────────────────────────────────────────────────────────
 class DetailPanel(QtWidgets.QFrame):
+    requestModify  = QtCore.Signal(dict)   # emits row_data
+    requestDelete  = QtCore.Signal(dict)   # emits row_data
+    requestOpenDoc = QtCore.Signal(str)    # emits file path
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAutoFillBackground(True)
-        pal = self.palette()
-        pal.setColor(QPalette.Window, QColor(WHITE))
-        self.setPalette(pal)
-        self.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.setFixedWidth(340)
+        self.setStyleSheet(f"""
+            DetailPanel {{
+                background:{WHITE};
+                border:1px solid {GRAY_CARD};
+                border-radius:12px;
+            }}
+        """)
+        self._row_data: dict | None = None
+        self._nb_docs = 0
         self._build()
 
+    # ── Build ─────────────────────────────────────────────────────────────────
     def _build(self):
         root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(20, 16, 20, 16)
-        root.setSpacing(10)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
-        self.lbl_title = QtWidgets.QLabel("—")
-        self.lbl_title.setFont(F_H1)
-        self.lbl_title.setStyleSheet(f"color:{DARK};")
-        self.lbl_title.setWordWrap(True)
-        root.addWidget(self.lbl_title)
+        # Header
+        self._hdr = QtWidgets.QWidget()
+        self._hdr.setStyleSheet(f"background:{WHITE}; border-radius:12px 12px 0 0;")
+        hdr_lay = QtWidgets.QVBoxLayout(self._hdr)
+        hdr_lay.setContentsMargins(16, 14, 16, 12)
+        hdr_lay.setSpacing(4)
 
-        self.lbl_type = QtWidgets.QLabel("Type de justificatif : —")
-        self.lbl_type.setFont(F_SMALL)
-        self.lbl_type.setStyleSheet(f"color:{GRAY_TEXT};")
-        root.addWidget(self.lbl_type)
+        title_row = QtWidgets.QHBoxLayout()
+        title_row.setSpacing(8)
+        self._lbl_title = _make_label("—", F_H1, DARK)
+        self._lbl_title.setWordWrap(True)
+        title_row.addWidget(self._lbl_title, 1)
+        self._badge = TypeBadge("CE")
+        self._badge.hide()
+        title_row.addWidget(self._badge)
+        hdr_lay.addLayout(title_row)
 
-        self.lbl_docs = QtWidgets.QLabel("Documents enregistrés : —")
-        self.lbl_docs.setFont(F_SMALL)
-        self.lbl_docs.setStyleSheet(f"color:{GRAY_TEXT};")
-        root.addWidget(self.lbl_docs)
+        self._lbl_sub = _make_label("", F_SMALL, GRAY_TEXT)
+        hdr_lay.addWidget(self._lbl_sub)
+        root.addWidget(self._hdr)
+        root.addWidget(_hline())
 
-        self.sep_top = hline()
-        root.addWidget(self.sep_top)
+        # Scroll body
+        scroll = QtWidgets.QScrollArea()
+        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet("background:transparent;")
+        body_w = QtWidgets.QWidget()
+        body_w.setStyleSheet("background:transparent;")
+        self._body = QtWidgets.QVBoxLayout(body_w)
+        self._body.setContentsMargins(16, 12, 16, 12)
+        self._body.setSpacing(12)
+        scroll.setWidget(body_w)
+        root.addWidget(scroll, 1)
 
-        self.tbl_fields = self._make_table(["Champ", "Valeur"])
-        self.tbl_fields.setVisible(False)
+        # Sections (created once, shown/hidden per selection)
+        self._lbl_docs_title = _make_label("Documents liés", F_BOLD, DARK)
+        self._body.addWidget(self._lbl_docs_title)
 
-        self.sep_fields = hline()
-        root.addWidget(self.sep_fields)
+        self._tbl_docs = self._make_doc_table()
+        self._body.addWidget(self._tbl_docs)
 
-        self.lbl_linked = QtWidgets.QLabel("Documents liés")
-        self.lbl_linked.setFont(F_BOLD)
-        self.lbl_linked.setStyleSheet(f"color:{DARK};")
-        root.addWidget(self.lbl_linked)
+        self._body.addWidget(_hline())
 
-        self.tbl_docs = self._make_table(["Exigence", "Nom du document"])
-        self.tbl_docs.cellClicked.connect(self._handle_table_click)
-        self.tbl_docs.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.tbl_docs.setMinimumHeight(300)
+        self._lbl_info_title = _make_label("Informations", F_BOLD, DARK)
+        self._body.addWidget(self._lbl_info_title)
 
-        self.tables_splitter = QtWidgets.QSplitter(Qt.Vertical)
-        self.tables_splitter.setChildrenCollapsible(False)
-        self.tables_splitter.addWidget(self.tbl_fields)
-        self.tables_splitter.addWidget(self.tbl_docs)
-        self.tables_splitter.setStretchFactor(0, 2)
-        self.tables_splitter.setStretchFactor(1, 1)
-        self.tables_splitter.setSizes([0, 1])
+        self._info_widget = QtWidgets.QWidget()
+        self._info_widget.setStyleSheet("background:transparent;")
+        self._info_lay = QtWidgets.QVBoxLayout(self._info_widget)
+        self._info_lay.setContentsMargins(0, 0, 0, 0)
+        self._info_lay.setSpacing(4)
+        self._body.addWidget(self._info_widget)
+        self._body.addStretch(1)
 
-        root.addWidget(self.tables_splitter, 1)
+        # Footer buttons
+        root.addWidget(_hline())
+        footer = QtWidgets.QWidget()
+        footer.setStyleSheet(f"background:{WHITE}; border-radius:0 0 12px 12px;")
+        footer_lay = QtWidgets.QVBoxLayout(footer)
+        footer_lay.setContentsMargins(14, 10, 14, 12)
+        footer_lay.setSpacing(6)
 
-    def _handle_table_click(self, row: int, column: int):
-        # CECC = 2 colonnes : document en colonne 1
-        # CE/DPE = 3 colonnes : document en colonne 2
-        doc_col = 1 if self.tbl_docs.columnCount() == 2 else 2
+        btn_row = QtWidgets.QHBoxLayout()
+        btn_row.setSpacing(8)
+        self._btn_modify = QtWidgets.QPushButton("✏   Modifier la référence")
+        self._btn_modify.setFont(F_BOLD)
+        self._btn_modify.setCursor(Qt.PointingHandCursor)
+        self._btn_modify.setFixedHeight(34)
+        self._btn_modify.setStyleSheet(f"""
+            QPushButton {{
+                background:{BLUE}; color:{WHITE};
+                border:none; border-radius:8px; padding:0 12px; font-size:8pt;
+            }}
+            QPushButton:hover {{ background:{BLUE_DARK}; }}
+        """)
+        self._btn_modify.clicked.connect(self._on_modify)
 
-        if column != doc_col:
-            return
+        self._btn_view = QtWidgets.QPushButton("📄  Voir les documents (0)")
+        self._btn_view.setFont(F_BODY)
+        self._btn_view.setCursor(Qt.PointingHandCursor)
+        self._btn_view.setFixedHeight(34)
+        self._btn_view.setStyleSheet(f"""
+            QPushButton {{
+                background:{WHITE}; color:{DARK};
+                border:1px solid {GRAY_BORDER}; border-radius:8px; padding:0 10px; font-size:8pt;
+            }}
+            QPushButton:hover {{ background:{GRAY_LIGHT}; }}
+        """)
+        btn_row.addWidget(self._btn_modify, 1)
+        btn_row.addWidget(self._btn_view, 1)
+        footer_lay.addLayout(btn_row)
 
-        item = self.tbl_docs.item(row, doc_col)
-        if item is None:
-            return
+        self._btn_delete = QtWidgets.QPushButton("🗑   Supprimer la référence")
+        self._btn_delete.setFont(F_BODY)
+        self._btn_delete.setCursor(Qt.PointingHandCursor)
+        self._btn_delete.setFixedHeight(34)
+        self._btn_delete.setStyleSheet(f"""
+            QPushButton {{
+                background:{WHITE}; color:{RED_KO};
+                border:1px solid #FCA5A5; border-radius:8px; padding:0 12px; font-size:8pt;
+            }}
+            QPushButton:hover {{ background:{RED_BG}; }}
+        """)
+        self._btn_delete.clicked.connect(self._on_delete)
+        footer_lay.addWidget(self._btn_delete)
+        root.addWidget(footer)
 
-        file_path = item.data(QtCore.Qt.UserRole)
-        if not file_path:
-            return
-
-        self._on_document_clicked(file_path)
-
-    def _on_document_clicked(self, file_path: str):
-        path = Path(file_path)
-
-        if not path.exists():
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Fichier introuvable",
-                f"Impossible d'ouvrir le fichier :\n\n{path}"
-            )
-            return
-
-        try:
-            if sys.platform.startswith("win"):
-                os.startfile(str(path))
-            elif sys.platform == "darwin":
-                subprocess.run(["open", str(path)], check=False)
-            else:
-                subprocess.run(["xdg-open", str(path)], check=False)
-
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Erreur d'ouverture",
-                f"Impossible d'ouvrir le fichier.\n\n{e}"
-            )
-
-    def _make_table(self, headers: list[str]) -> QtWidgets.QTableWidget:
-        t = QtWidgets.QTableWidget(0, len(headers))
-        t.setHorizontalHeaderLabels(headers)
+    def _make_doc_table(self) -> QtWidgets.QTableWidget:
+        t = QtWidgets.QTableWidget(0, 3)
+        t.setHorizontalHeaderLabels(["Exigence", "Applicabilité", "Nom du document"])
         t.horizontalHeader().setFont(F_BOLD)
-        t.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        t.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+        t.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        t.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
         t.verticalHeader().setVisible(False)
         t.setShowGrid(False)
         t.setAlternatingRowColors(True)
         t.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
-        t.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
-        t.setSelectionMode(QtWidgets.QTableWidget.SingleSelection)
-        t.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred)
+        t.setSelectionMode(QtWidgets.QTableWidget.NoSelection)
+        t.setMaximumHeight(240)
         t.setStyleSheet(f"""
             QTableWidget {{
-                border: 1px solid {GRAY_BORDER}; border-radius:6px;
-                font-size:9pt; background:{WHITE};
+                border:1px solid {GRAY_BORDER}; border-radius:8px;
+                font-size:8pt; background:{WHITE};
                 alternate-background-color:{ALT_ROW};
             }}
             QHeaderView::section {{
-                background:#F9FAFB; border:none;
-                border-bottom:1px solid {GRAY_BORDER};
-                padding:5px 8px; font-weight:bold; color:{DARK};
+                background:{GRAY_LIGHT}; color:{GRAY_TEXT};
+                border:none; border-bottom:1px solid {GRAY_BORDER};
+                padding:5px 6px; font-weight:700; font-size:8pt;
             }}
-            QTableWidget::item {{ padding:5px 8px; }}
-            QTableWidget::item:selected {{ background:{BLUE_LIGHT}; color:{BLUE}; }}
+            QTableWidget::item {{ padding:4px 6px; color:{DARK}; }}
         """)
+        t.cellClicked.connect(self._on_doc_clicked)
         return t
 
+    # ── Public API ────────────────────────────────────────────────────────────
     def clear(self):
-        self.lbl_title.setText("—")
-        self.lbl_type.setText("Type de justificatif : —")
-        self.lbl_docs.setText("Documents enregistrés : —")
-        self.tbl_fields.setRowCount(0)
-        self.tbl_docs.setRowCount(0)
-        self.tbl_fields.hide()
-        self.sep_fields.hide()
-        self.lbl_linked.show()
-        self.tbl_docs.setMinimumHeight(300)
-        self.tbl_docs.setMaximumHeight(16777215)
-        self.tbl_docs.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.tables_splitter.setSizes([0, 1])
+        self._row_data = None
+        self._lbl_title.setText("Sélectionne une ligne")
+        self._lbl_sub.setText("")
+        self._badge.hide()
+        self._tbl_docs.setRowCount(0)
+        self._clear_info()
+        self._btn_modify.setEnabled(False)
+        self._btn_view.setEnabled(False)
+        self._btn_delete.setEnabled(False)
 
-    def set_header(self, supplier: str, reference: str, justif_type: str, nb_docs: int):
-        self.lbl_title.setText(f"{supplier} / {reference} / {justif_type}")
-        self.lbl_type.setText(f"Type de justificatif : {justif_type}")
-        self.lbl_docs.setText(f"Documents enregistrés : {nb_docs}")
+    def populate(self, row_data: dict, detail_rows: list[dict]):
+        self._row_data = row_data
+        supplier  = row_data["supplier"]
+        reference = row_data["reference"]
+        jtype     = row_data["type"]
+        docs      = row_data.get("docs", [])
+        self._nb_docs = len(docs)
 
-    def set_fields(self, rows: list[tuple[str, str]], type_: str = ""):
-        self.tbl_fields.setRowCount(len(rows))
-        for i, (label, value) in enumerate(rows):
-            self.tbl_fields.setItem(i, 0, QtWidgets.QTableWidgetItem(str(label)))
-            self.tbl_fields.setItem(i, 1, QtWidgets.QTableWidgetItem(str(value)))
-        self.tbl_fields.resizeRowsToContents()
+        # Header
+        self._lbl_title.setText(f"{supplier}  –  {reference}")
+        self._badge.setText(jtype)
+        bg, fg = TYPE_COLORS.get(jtype, ("#F1F5F9", "#374151"))
+        self._badge.setStyleSheet(f"""
+            background:{bg}; color:{fg};
+            border-radius:10px; padding:2px 10px;
+            font-size:9pt; font-weight:700;
+        """)
+        self._badge.show()
+        self._lbl_sub.setText(
+            f"Type : {jtype}    ·    {self._nb_docs} document(s) enregistré(s)"
+        )
 
-        has_fields = len(rows) > 0
-
-        if type_ in ("CE", "DPE"):
-            self.tbl_fields.hide()
-            self.sep_fields.hide()
-            self.lbl_linked.show()
-            self.tbl_docs.setMinimumHeight(300)
-            self.tbl_docs.setMaximumHeight(16777215)
-            self.tbl_docs.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self.tables_splitter.setSizes([0, 1])
-        elif type_ == "CECC":
-            self.tbl_fields.hide()
-            self.sep_fields.hide()
-            self.lbl_linked.hide()
-            self.tbl_docs.setMinimumHeight(300)
-            self.tbl_docs.setMaximumHeight(16777215)
-            self.tbl_docs.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-            self.tables_splitter.setSizes([0, 1])
-        else:
-            if has_fields:
-                self.tbl_fields.show()
-                self.sep_fields.show()
-                self.lbl_linked.show()
-            else:
-                self.tbl_fields.hide()
-                self.sep_fields.hide()
-                self.lbl_linked.show()
-
-    def set_linked_docs(self, rows: list[dict], type_: str = ""):
-        is_cecc = (type_ == "CECC")
-
+        # Documents liés table
+        is_cecc = (jtype == "CECC")
         if is_cecc:
-            self.tbl_docs.setColumnCount(2)
-            self.tbl_docs.setHorizontalHeaderLabels(["Champ", "Valeur"])
+            self._tbl_docs.setColumnCount(2)
+            self._tbl_docs.setHorizontalHeaderLabels(["Champ", "Valeur"])
+            self._tbl_docs.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+            self._tbl_docs.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Stretch)
         else:
-            self.tbl_docs.setColumnCount(3)
-            self.tbl_docs.setHorizontalHeaderLabels(
-                ["Exigence", "Applicabilité", "Nom du document"]
-            )
+            self._tbl_docs.setColumnCount(3)
+            self._tbl_docs.setHorizontalHeaderLabels(["Exigence", "Applicabilité", "Nom du document"])
+            self._tbl_docs.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
+            self._tbl_docs.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+            self._tbl_docs.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
 
-        self.tbl_docs.setRowCount(len(rows))
-
-        for i, detail in enumerate(rows):
-            left_value = str(detail.get("requirement", ""))
+        self._tbl_docs.setRowCount(len(detail_rows))
+        for i, detail in enumerate(detail_rows):
             applicability = str(detail.get("applicability", "Applicable"))
-            right_value = str(detail.get("filename", ""))
-
-            self.tbl_docs.setItem(i, 0, QtWidgets.QTableWidgetItem(left_value))
+            req_item = QtWidgets.QTableWidgetItem(str(detail.get("requirement", "")))
+            req_item.setData(Qt.UserRole, detail.get("path", ""))
+            self._tbl_docs.setItem(i, 0, req_item)
 
             if not is_cecc:
                 app_item = QtWidgets.QTableWidgetItem(applicability)
-
+                app_item.setTextAlignment(Qt.AlignCenter)
                 if applicability == "Non applicable":
                     app_item.setForeground(QColor(ORANGE_WARN))
-                elif applicability == "Applicable":
+                else:
                     app_item.setForeground(QColor(GREEN_OK))
-                elif applicability == "Non défini":
-                    app_item.setForeground(QColor(GRAY_TEXT))
-
-                app_item.setTextAlignment(QtCore.Qt.AlignCenter)
-                self.tbl_docs.setItem(i, 1, app_item)
-
+                self._tbl_docs.setItem(i, 1, app_item)
                 doc_col = 2
             else:
                 doc_col = 1
 
-            item = QtWidgets.QTableWidgetItem(right_value)
-
-            if is_cecc and left_value == "Nom : CECC":
-                item.setForeground(QColor(BLUE))
-                font = item.font()
+            filename = str(detail.get("filename", "—"))
+            file_item = QtWidgets.QTableWidgetItem(filename)
+            if filename not in ("—", "N/A", ""):
+                file_item.setForeground(QColor(BLUE))
+                font = file_item.font()
                 font.setUnderline(True)
-                item.setFont(font)
-                item.setToolTip("Cliquer pour ouvrir")
-                item.setData(QtCore.Qt.UserRole, detail.get("path", ""))
+                file_item.setFont(font)
+                file_item.setToolTip("Cliquer pour ouvrir")
+            file_item.setData(Qt.UserRole, detail.get("path", ""))
+            self._tbl_docs.setItem(i, doc_col, file_item)
 
-            elif not is_cecc and right_value != "—":
-                item.setForeground(QColor(BLUE))
-                font = item.font()
-                font.setUnderline(True)
-                item.setFont(font)
-                item.setToolTip("Double-cliquer pour ouvrir")
-                item.setData(QtCore.Qt.UserRole, detail.get("path", ""))
+        self._tbl_docs.resizeRowsToContents()
 
-            self.tbl_docs.setItem(i, doc_col, item)
+        # Informations section
+        self._clear_info()
+        pct_str  = row_data.get("completion", "—")
+        try:
+            pct_val = int(str(pct_str).replace("%", "").replace(" ", ""))
+        except ValueError:
+            pct_val = -1
 
-        self.tbl_docs.resizeRowsToContents()
+        info_items = [
+            ("👤", "Fournisseur",       supplier),
+            ("📋", "Référence",         reference),
+            ("📦", "Type",              jtype),
+            ("📄", "Nb de documents",   str(self._nb_docs)),
+            ("✅", "Complétude",        pct_str),
+        ]
+        for icon, label, value in info_items:
+            row_w = QtWidgets.QWidget()
+            row_w.setStyleSheet("background:transparent;")
+            row_h = QtWidgets.QHBoxLayout(row_w)
+            row_h.setContentsMargins(0, 0, 0, 0)
+            row_h.setSpacing(6)
 
-    def _normalize_requirement_code(self, code: str) -> str:
-        code = str(code or "").strip()
+            icon_lbl = _make_label(icon, F_BODY, GRAY_TEXT)
+            icon_lbl.setFixedWidth(16)
+            label_lbl = _make_label(label, F_SMALL, GRAY_TEXT)
+            label_lbl.setFixedWidth(110)
 
-        if " — " in code:
-            code = code.split(" — ", 1)[0].strip()
+            if label == "Complétude" and pct_val >= 0:
+                val_w = _completion_badge(pct_str)
+            else:
+                val_w = _make_label(value, F_SMALL, DARK)
 
-        if " | " in code:
-            code = code.split(" | ", 1)[0].strip()
+            row_h.addWidget(icon_lbl)
+            row_h.addWidget(label_lbl)
+            row_h.addWidget(val_w)
+            row_h.addStretch(1)
+            self._info_lay.addWidget(row_w)
 
-        return code
+        # Buttons
+        self._btn_view.setText(f"📄  Voir les documents ({self._nb_docs})")
+        self._btn_modify.setEnabled(True)
+        self._btn_view.setEnabled(True)
+        self._btn_delete.setEnabled(True)
 
+    def _clear_info(self):
+        while self._info_lay.count():
+            item = self._info_lay.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
 
-    def _code_matches(self, a: str, b: str) -> bool:
-        return self._normalize_requirement_code(a) == self._normalize_requirement_code(b)
+    # ── Slots ─────────────────────────────────────────────────────────────────
+    def _on_doc_clicked(self, row: int, col: int):
+        doc_col = 1 if self._tbl_docs.columnCount() == 2 else 2
+        if col != doc_col:
+            return
+        item = self._tbl_docs.item(row, doc_col)
+        if item:
+            path = item.data(Qt.UserRole)
+            if path:
+                self.requestOpenDoc.emit(str(path))
 
+    def _on_modify(self):
+        if self._row_data:
+            self.requestModify.emit(self._row_data)
 
-    def _is_not_applicable(self, docs: list[dict], code: str) -> bool:
-        for doc in docs:
-            for na_code in doc.get("not_applicable_codes", []) or []:
-                if self._code_matches(na_code, code):
-                    return True
-        return False
+    def _on_delete(self):
+        if self._row_data:
+            self.requestDelete.emit(self._row_data)
 
-
+# ── Table tab (one per BDD type + "Tous") ────────────────────────────────────
 class MainTab(QtWidgets.QWidget):
-    COLUMNS = ["Fournisseur","Référence T","Libellé équipement","MNP","N° de commande","Type","Nombre de documents","Complétude",]
+    COLUMNS = [
+        "Fournisseur", "Référence", "Libellé équipement",
+        "MNP", "N° de commande", "Type",
+        "Nb docs", "Complétude",
+    ]
+
+    rowSelected = QtCore.Signal(dict)  # emits row_data
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._build()
 
     def _build(self):
-        root = QtWidgets.QHBoxLayout(self)
-        root.setContentsMargins(8, 8, 8, 8)
-        root.setSpacing(0)
-
-        self.splitter = QtWidgets.QSplitter(Qt.Horizontal)
-        self.splitter.setChildrenCollapsible(False)
-        self.splitter.setHandleWidth(4)
-        self.splitter.setStyleSheet(f"QSplitter::handle {{ background:{GRAY_BORDER}; }}")
+        h = QtWidgets.QHBoxLayout(self)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(0)
 
         self.table = QtWidgets.QTableWidget(0, len(self.COLUMNS))
         self.table.setHorizontalHeaderLabels(self.COLUMNS)
-        self.table.horizontalHeader().setFont(F_BOLD)
-        self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        hh = self.table.horizontalHeader()
+        hh.setFont(F_BOLD)
+        hh.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
+        hh.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(6, QtWidgets.QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(7, QtWidgets.QHeaderView.ResizeToContents)
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
@@ -442,68 +580,121 @@ class MainTab(QtWidgets.QWidget):
         self.table.setSortingEnabled(True)
         self.table.setStyleSheet(f"""
             QTableWidget {{
-                border: none; font-size:9pt;
+                border:none; font-size:9pt;
                 background:{WHITE}; alternate-background-color:{ALT_ROW};
             }}
             QHeaderView::section {{
-                background:#F9FAFB; border:none;
-                border-bottom:2px solid {GRAY_BORDER};
-                padding:6px 8px; font-weight:bold; color:{DARK};
+                background:{GRAY_LIGHT}; color:{GRAY_TEXT};
+                border:none; border-bottom:2px solid {GRAY_BORDER};
+                padding:7px 8px; font-weight:700; font-size:8pt;
             }}
             QTableWidget::item {{ padding:6px 8px; color:{DARK}; }}
-            QTableWidget::item:selected {{ background:{SEL_BG}; color:{WHITE}; }}
+            QTableWidget::item:selected {{ background:{SEL_BG}; color:{BLUE}; }}
         """)
+        self.table.itemSelectionChanged.connect(self._on_selection_changed)
+        h.addWidget(self.table, 1)
 
-        self.detail = DetailPanel()
-        self.detail.tbl_docs.cellDoubleClicked.connect(self._forward_detail_double_click)
+    def _on_selection_changed(self):
+        idxs = self.table.selectedIndexes()
+        if not idxs:
+            return
+        row = idxs[0].row()
+        item = self.table.item(row, 0)
+        if item:
+            data = item.data(Qt.UserRole)
+            if data:
+                self.rowSelected.emit(data)
 
-        self.splitter.addWidget(self.table)
-        self.splitter.addWidget(self.detail)
-        self.splitter.setStretchFactor(0, 3)
-        self.splitter.setStretchFactor(1, 2)
-        self.splitter.setSizes([780, 520])
+    def load_rows(self, rows: list[dict]):
+        self.table.setSortingEnabled(False)
+        self.table.clearContents()
+        self.table.setRowCount(len(rows))
+        self.table.horizontalHeader().setDefaultAlignment(Qt.AlignCenter)
 
-        root.addWidget(self.splitter)
+        for ri, row in enumerate(rows):
+            pct = row.get("completion_value", 0.0)
+            if pct >= 1.0:
+                c_color = GREEN_OK
+            elif pct > 0:
+                c_color = ORANGE_WARN
+            else:
+                c_color = RED_KO
 
-    def _forward_detail_double_click(self, row: int, column: int):
-        parent = self.parent()
-        while parent is not None:
-            if hasattr(parent, "_open_document_from_detail_table"):
-                parent._open_document_from_detail_table(row, column)
-                return
-            parent = parent.parent()
+            values = [
+                (row.get("supplier", ""),       Qt.AlignLeft  | Qt.AlignVCenter),
+                (row.get("reference", ""),       Qt.AlignLeft  | Qt.AlignVCenter),
+                (row.get("label", ""),           Qt.AlignLeft  | Qt.AlignVCenter),
+                (str(row.get("documents_db", row.get("documents", 0))),
+                                                 Qt.AlignCenter),
+                (row.get("order_number", ""),    Qt.AlignCenter),
+                (row.get("type", ""),            Qt.AlignCenter),
+                (str(row.get("documents", 0)),   Qt.AlignCenter),
+                (row.get("completion", "—"),     Qt.AlignCenter),
+            ]
 
+            for ci, (val, align) in enumerate(values):
+                item = QtWidgets.QTableWidgetItem(str(val))
+                item.setTextAlignment(align)
+                item.setData(Qt.UserRole, row)
+                if ci == 7:  # Complétude column
+                    item.setForeground(QtGui.QBrush(QColor(c_color)))
+                    font = item.font()
+                    font.setBold(True)
+                    item.setFont(font)
+                self.table.setItem(ri, ci, item)
 
+        self.table.resizeRowsToContents()
+        self.table.setSortingEnabled(True)
+        self.table.sortByColumn(0, Qt.AscendingOrder)
+
+        if self.table.rowCount() > 0:
+            self.table.selectRow(0)
+
+    def selected_rows_data(self) -> list[dict]:
+        rows = []
+        seen = set()
+        for idx in self.table.selectedIndexes():
+            r = idx.row()
+            if r in seen:
+                continue
+            seen.add(r)
+            item = self.table.item(r, 0)
+            if item:
+                data = item.data(Qt.UserRole)
+                if data:
+                    rows.append(data)
+        return rows
+
+# ── Main window ───────────────────────────────────────────────────────────────
 class ProjectDashboardWindow(QtWidgets.QMainWindow):
+
     def __init__(self, project_data: dict, parent=None):
         super().__init__(parent)
-        self.project_data = project_data
-        self.project_dir = Path(project_data["project_path"])
-        self.column_filters: dict[str, set[str] | None] = {
-            "supplier": None,
-            "reference": None,
-            "type": None,
-            "completion": None,
-        }
-        self.active_tab_type: str | None = None
-        self.current_rows_by_tab: dict[str, list[dict]] = {}
+        self.project_data   = project_data
+        self.project_dir    = Path(project_data["project_path"])
         self.project_manager = ProjectManager()
-        self.enabled_bdds = list(self.project_data.get("enabled_bdds", JUSTIFICATION_TYPES))
+        self.enabled_bdds   = list(project_data.get("enabled_bdds", JUSTIFICATION_TYPES))
+
+        self.column_filters: dict[str, set[str] | None] = {
+            "supplier": None, "reference": None,
+            "type": None,     "completion": None,
+        }
         self.tab_widgets_by_name: dict[str, MainTab] = {}
-        self._all_rows_cache: list[dict] = []
+        self._all_rows_cache:      list[dict] = []
         self._filtered_rows_cache: list[dict] = []
-        self.current_rows_by_tab: dict[str, list[dict]] = {}
+        self.current_rows_by_tab:  dict[str, list[dict]] = {}
 
         init_metadata_db(self.project_dir)
-
-        self.setWindowTitle(f"NOX_Manager — {project_data.get('project_name', self.project_dir.name)}")
-        self.resize(1280, 820)
-        self.setMinimumSize(1000, 680)
+        self.setWindowTitle(
+            f"NOX_Manager — {project_data.get('project_name', self.project_dir.name)}"
+        )
+        self.resize(1400, 860)
+        self.setMinimumSize(1100, 700)
 
         self._build_ui()
         self._load_table()
-        self._update_filter_buttons()
 
+    # ── UI construction ───────────────────────────────────────────────────────
     def _build_ui(self):
         central = QtWidgets.QWidget()
         central.setStyleSheet(f"background:{BG};")
@@ -513,888 +704,334 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        root.addWidget(self._build_menubar())
-        root.addWidget(self._build_header())
-        root.addWidget(self._build_tabs(), 1)
-        root.addWidget(self._build_statusbar())
+        root.addWidget(self._build_topbar())
 
-    def _build_menubar(self) -> QtWidgets.QWidget:
+        # Body: sidebar + content
+        body = QtWidgets.QWidget()
+        body_h = QtWidgets.QHBoxLayout(body)
+        body_h.setContentsMargins(0, 0, 0, 0)
+        body_h.setSpacing(0)
+        body_h.addWidget(self._build_sidebar())
+        body_h.addWidget(self._build_content(), 1)
+        root.addWidget(body, 1)
+
+    # ── Top bar (dark) ────────────────────────────────────────────────────────
+    def _build_topbar(self) -> QtWidgets.QWidget:
         bar = QtWidgets.QWidget()
-        bar.setFixedHeight(34)
-        bar.setStyleSheet(f"background:{WHITE};")
+        bar.setFixedHeight(44)
+        bar.setStyleSheet(f"background:{TOPBAR_BG};")
 
-        outer = QtWidgets.QVBoxLayout(bar)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(0)
-
-        content = QtWidgets.QWidget(bar)
-        h = QtWidgets.QHBoxLayout(content)
-        h.setContentsMargins(12, 0, 12, 0)
+        h = QtWidgets.QHBoxLayout(bar)
+        h.setContentsMargins(16, 0, 16, 0)
         h.setSpacing(2)
 
-        for label, slot in [
-            ("Paramétrage projet", self._open_project_settings),
-            ("Importer", self._open_upload_from_selection),
-            ("Actualiser", self._load_table),
-            ("Exporter les BDD", self._export_templates),
-        ]:
+        brand = QtWidgets.QLabel("NOX Manager")
+        brand.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        brand.setStyleSheet(f"color:{WHITE}; background:transparent;")
+        h.addWidget(brand)
+        h.addSpacing(12)
+
+        actions = [
+            ("⚙  Paramétrage", self._open_project_settings),
+            ("📥  Importer",    self._open_upload_from_selection),
+            ("↺  Actualiser",  self._load_table),
+            ("📊  Exporter BDD", self._export_templates),
+        ]
+
+        for label, slot in actions:
             btn = QtWidgets.QPushButton(label)
-            btn.setFont(QtGui.QFont("Segoe UI", 9))
+            btn.setFont(F_TOPBAR)
             btn.setCursor(Qt.PointingHandCursor)
             btn.setFlat(True)
             btn.setStyleSheet(f"""
-                QPushButton {{ padding:4px 12px; color:{DARK}; border-radius:4px; border:none; font-size:9pt; }}
-                QPushButton:hover   {{ background:{BLUE_LIGHT}; color:{BLUE}; }}
-                QPushButton:pressed {{ background:#DBEAFE; }}
+                QPushButton {{
+                    color:{TOPBAR_FG}; padding:5px 12px;
+                    border-radius:6px; border:none; font-size:9pt;
+                }}
+                QPushButton:hover   {{ background:#1F2937; color:{WHITE}; }}
+                QPushButton:pressed {{ background:#374151; }}
             """)
             btn.clicked.connect(slot)
             h.addWidget(btn)
 
-        h.addStretch()
-        outer.addWidget(content, 1)
+        h.addStretch(1)
 
-        sep = QtWidgets.QFrame(bar)
-        sep.setFrameShape(QtWidgets.QFrame.HLine)
-        sep.setFixedHeight(1)
-        sep.setStyleSheet(f"background:{GRAY_BORDER}; color:{GRAY_BORDER}; border:none;")
-        outer.addWidget(sep)
+        project_badge = QtWidgets.QLabel(
+            self.project_data.get("project_name", self.project_dir.name)
+        )
+        project_badge.setFont(F_BOLD)
+        project_badge.setStyleSheet("""
+            background:#F59E0B; color:#1F2937;
+            border-radius:6px; padding:3px 12px; font-size:9pt; font-weight:700;
+        """)
+        h.addWidget(project_badge)
         return bar
 
-    def _build_header(self) -> QtWidgets.QWidget:
-        card = QtWidgets.QWidget()
-        card.setStyleSheet(f"background:{WHITE}; border-bottom:1px solid {GRAY_BORDER};")
-        card.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+    # ── Sidebar ───────────────────────────────────────────────────────────────
+    def _build_sidebar(self) -> QtWidgets.QWidget:
+        sidebar = QtWidgets.QWidget()
+        sidebar.setFixedWidth(165)
+        sidebar.setStyleSheet(f"""
+            background:{WHITE};
+            border-right:1px solid {GRAY_BORDER};
+        """)
 
-        outer = QtWidgets.QVBoxLayout(card)
-        outer.setContentsMargins(16, 10, 16, 10)
-        outer.setSpacing(8)
+        v = QtWidgets.QVBoxLayout(sidebar)
+        v.setContentsMargins(8, 12, 8, 12)
+        v.setSpacing(4)
 
-        self.project_name_label = QtWidgets.QLabel(f"Projet : {self.project_data.get('project_name', self.project_dir.name)}")
-        self.project_name_label.setFont(F_H1)
-        self.project_name_label.setStyleSheet(f"color:{DARK}; border:none;")
-        outer.addWidget(self.project_name_label)
+        nav_items = [
+            ("🗂", "Vue d'ensemble", True),
+            ("📄", "Documents",       False),
+        ]
+        self._nav_buttons: list[QtWidgets.QPushButton] = []
+        for icon, label, active in nav_items:
+            btn = QtWidgets.QPushButton(f"  {icon}  {label}")
+            btn.setFont(F_BODY)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setCheckable(True)
+            btn.setChecked(active)
+            btn.setFixedHeight(36)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    text-align:left; padding:0 10px;
+                    border-radius:8px; border:none;
+                    color:{BLUE if active else GRAY_TEXT};
+                    background:{BLUE_LIGHT if active else 'transparent'};
+                    font-weight:{'700' if active else '400'};
+                }}
+                QPushButton:hover:!checked {{
+                    background:{GRAY_LIGHT}; color:{DARK};
+                }}
+                QPushButton:checked {{
+                    background:{BLUE_LIGHT}; color:{BLUE}; font-weight:700;
+                }}
+            """)
+            self._nav_buttons.append(btn)
+            v.addWidget(btn)
 
-        row = QtWidgets.QHBoxLayout()
-        row.setSpacing(8)
+        v.addStretch(1)
 
-        self.lbl_refs = self._badge("Références : 0")
-        self.lbl_docs_count = self._badge("Avec docs : 0")
-        row.addWidget(self.lbl_refs)
-        row.addWidget(self.lbl_docs_count)
-        row.addWidget(self._vsep())
+        # Timestamp footer
+        self._lbl_timestamp = _make_label("Dernière actualisation", F_TINY, GRAY_TEXT)
+        self._lbl_date = _make_label("—", F_SMALL, DARK)
+        v.addWidget(self._lbl_timestamp)
+        v.addWidget(self._lbl_date)
+        return sidebar
 
-        self.kpi_ce = KpiWidget("CE", 0, "#F59E0B")
-        self.kpi_cecc = KpiWidget("CECC", 0, "#8B5CF6")
-        self.kpi_dpe = KpiWidget("DPE", 0, "#EF4444")
-        for widget in (self.kpi_ce, self.kpi_cecc, self.kpi_dpe):
-            row.addWidget(widget)
+    # ── Main content ──────────────────────────────────────────────────────────
+    def _build_content(self) -> QtWidgets.QWidget:
+        w = QtWidgets.QWidget()
+        w.setStyleSheet(f"background:{BG};")
+        v = QtWidgets.QVBoxLayout(w)
+        v.setContentsMargins(12, 10, 12, 8)
+        v.setSpacing(8)
 
-        row.addStretch()
+        v.addWidget(self._build_kpi_row())
+        v.addWidget(self._build_table_section(), 1)
+        return w
 
-        self.filter_supplier_button = FilterChip("Fournisseur")
-        self.filter_supplier_button.clicked.connect(
+    # ── KPI row ───────────────────────────────────────────────────────────────
+    def _build_kpi_row(self) -> QtWidgets.QWidget:
+        row = QtWidgets.QWidget()
+        row.setStyleSheet("background:transparent;")
+        h = QtWidgets.QHBoxLayout(row)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(8)
+
+        self.kpi_ce = KpiCard(
+            "📋", "CE", "0 %", "Complétude",
+            bar_color=KPI_BAR_COLORS["CE"], icon_bg="#FEF3C7"
+        )
+        self.kpi_cecc = KpiCard(
+            "🎁", "CECC", "0 %", "Complétude",
+            bar_color=KPI_BAR_COLORS["CECC"], icon_bg="#EDE9FE"
+        )
+        self.kpi_dpe = KpiCard(
+            "🌿", "DPE", "0 %", "Complétude",
+            bar_color=KPI_BAR_COLORS["DPE"], icon_bg="#D1FAE5"
+        )
+        self.kpi_refs = KpiCard(
+            "📄", "Références", "0", "Total", icon_bg="#DBEAFE"
+        )
+        self.kpi_docs = KpiCard(
+            "📋", "Documents", "0", "Total", icon_bg="#D1FAE5"
+        )
+        for card in (self.kpi_ce, self.kpi_cecc, self.kpi_dpe, self.kpi_refs, self.kpi_docs):
+            h.addWidget(card, 1)
+        return row
+
+    # ── Table section (tabs + detail panel) ───────────────────────────────────
+    def _build_table_section(self) -> QtWidgets.QWidget:
+        outer = QtWidgets.QWidget()
+        outer.setStyleSheet("background:transparent;")
+        h = QtWidgets.QHBoxLayout(outer)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(8)
+
+        # Left: filter bar + tabs
+        left = QtWidgets.QFrame()
+        left.setStyleSheet(f"""
+            QFrame {{
+                background:{WHITE};
+                border:1px solid {GRAY_CARD};
+                border-radius:12px;
+            }}
+        """)
+        lv = QtWidgets.QVBoxLayout(left)
+        lv.setContentsMargins(0, 0, 0, 0)
+        lv.setSpacing(0)
+        lv.addWidget(self._build_filter_row())
+        lv.addWidget(_hline())
+        lv.addWidget(self._build_tabs(), 1)
+        lv.addWidget(self._build_statusbar())
+        h.addWidget(left, 1)
+
+        # Right: detail panel
+        self.detail_panel = DetailPanel()
+        self.detail_panel.clear()
+        self.detail_panel.requestModify.connect(self._on_modify_row)
+        self.detail_panel.requestDelete.connect(self._on_delete_row)
+        self.detail_panel.requestOpenDoc.connect(self._open_file)
+        h.addWidget(self.detail_panel)
+        return outer
+
+    # ── Filter row ────────────────────────────────────────────────────────────
+    def _build_filter_row(self) -> QtWidgets.QWidget:
+        bar = QtWidgets.QWidget()
+        bar.setFixedHeight(48)
+        bar.setStyleSheet("background:transparent;")
+        h = QtWidgets.QHBoxLayout(bar)
+        h.setContentsMargins(12, 8, 12, 8)
+        h.setSpacing(6)
+
+        self.chip_supplier = FilterChip("Fournisseur")
+        self.chip_reference = FilterChip("Référence")
+        self.chip_type = FilterChip("Type")
+        self.chip_completion = FilterChip("Complétude")
+
+        self.chip_supplier.clicked.connect(
             lambda: self._open_column_filter("supplier", "Filtrer les fournisseurs")
         )
-        self.filter_supplier_button.setFixedHeight(32)
-
-        self.filter_reference_button = FilterChip("Référence")
-        self.filter_reference_button.clicked.connect(
+        self.chip_reference.clicked.connect(
             lambda: self._open_column_filter("reference", "Filtrer les références")
         )
-        self.filter_reference_button.setFixedHeight(32)
-
-        self.filter_type_button = FilterChip("Type")
-        self.filter_type_button.clicked.connect(
+        self.chip_type.clicked.connect(
             lambda: self._open_column_filter("type", "Filtrer les types")
         )
-        self.filter_type_button.setFixedHeight(32)
-
-        self.filter_completion_button = FilterChip("Complétude")
-        self.filter_completion_button.clicked.connect(
+        self.chip_completion.clicked.connect(
             lambda: self._open_column_filter("completion", "Filtrer la complétude")
         )
-        self.filter_completion_button.setFixedHeight(32)
 
-        for chip in (
-            self.filter_supplier_button,
-            self.filter_reference_button,
-            self.filter_type_button,
-            self.filter_completion_button,
-            
-        ):
-            row.addWidget(chip)
+        for chip in (self.chip_supplier, self.chip_reference,
+                     self.chip_type, self.chip_completion):
+            h.addWidget(chip)
 
-        row.addWidget(self._vsep())
+        h.addStretch(1)
 
-        btn_up = QtWidgets.QPushButton("⬆  Importer un document")
-        btn_up.setFont(F_BOLD)
-        btn_up.setFixedHeight(32)
-        btn_up.setMinimumWidth(100)
-        btn_up.setCursor(Qt.PointingHandCursor)
-        btn_up.setStyleSheet(f"""
+        sep = QtWidgets.QFrame()
+        sep.setFrameShape(QtWidgets.QFrame.VLine)
+        sep.setFixedHeight(24)
+        sep.setStyleSheet(f"color:{GRAY_BORDER};")
+        h.addWidget(sep)
+
+        btn_import = QtWidgets.QPushButton("＋  Importer un document")
+        btn_import.setFont(F_BOLD)
+        btn_import.setFixedHeight(32)
+        btn_import.setCursor(Qt.PointingHandCursor)
+        btn_import.setStyleSheet(f"""
             QPushButton {{
                 background:{BLUE}; color:{WHITE};
-                border-radius:6px; padding:0 16px; border:none;
+                border:none; border-radius:8px;
+                padding:0 16px; font-size:9pt;
             }}
-            QPushButton:hover   {{ background:#1976D2; }}
-            QPushButton:pressed {{ background:#0D47A1; }}
+            QPushButton:hover   {{ background:{BLUE_DARK}; }}
+            QPushButton:pressed {{ background:#1E40AF; }}
         """)
-        btn_up.clicked.connect(self._open_upload_from_selection)
-        row.addWidget(btn_up)
+        btn_import.clicked.connect(self._open_upload_from_selection)
+        h.addWidget(btn_import)
+        return bar
 
-        outer.addLayout(row)
-        return card
-
-    def _badge(self, text: str) -> QtWidgets.QLabel:
-        lbl = QtWidgets.QLabel(text)
-        lbl.setFont(F_BODY)
-        lbl.setStyleSheet(f"""
-            background:{ALT_ROW}; border:1px solid {GRAY_BORDER};
-            border-radius:12px; padding:3px 12px; color:{DARK};
+    # ── Tabs ──────────────────────────────────────────────────────────────────
+    def _build_tabs(self) -> QtWidgets.QTabWidget:
+        self.tabs = QtWidgets.QTabWidget()
+        self.tabs.setDocumentMode(True)
+        self.tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border:none; background:{WHITE}; margin-top:0;
+            }}
+            QTabBar::tab {{
+                background:transparent; color:{GRAY_TEXT};
+                padding:8px 20px;
+                border:none; border-bottom:2px solid transparent;
+                font-size:9pt;
+            }}
+            QTabBar::tab:selected {{
+                color:{BLUE}; font-weight:700;
+                border-bottom:2px solid {BLUE};
+            }}
+            QTabBar::tab:hover:!selected {{
+                color:{DARK}; background:{GRAY_LIGHT};
+            }}
+            QTabBar {{ background:{WHITE}; border-bottom:1px solid {GRAY_BORDER}; }}
         """)
-        lbl.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
-        return lbl
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
-    def _vsep(self) -> QtWidgets.QFrame:
-        f = QtWidgets.QFrame()
-        f.setFrameShape(QtWidgets.QFrame.VLine)
-        f.setFixedHeight(24)
-        f.setStyleSheet(f"color:{GRAY_BORDER};")
-        return f
+        tab_all = MainTab(self)
+        self.tab_widgets_by_name["Tous"] = tab_all
+        self.tabs.addTab(tab_all, "Tous")
+        tab_all.rowSelected.connect(self._on_row_selected)
 
+        for bdd in self.enabled_bdds:
+            tab = MainTab(self)
+            self.tab_widgets_by_name[bdd] = tab
+            self.tabs.addTab(tab, bdd)
+            tab.rowSelected.connect(self._on_row_selected)
+
+        return self.tabs
+
+    # ── Status bar ───────────────────────────────────────────────────────────
+    def _build_statusbar(self) -> QtWidgets.QWidget:
+        bar = QtWidgets.QWidget()
+        bar.setFixedHeight(26)
+        bar.setStyleSheet(f"border-top:1px solid {GRAY_BORDER}; background:transparent;")
+        h = QtWidgets.QHBoxLayout(bar)
+        h.setContentsMargins(14, 0, 14, 0)
+        self.lbl_row_count = _make_label("0 lignes", F_SMALL, GRAY_TEXT)
+        h.addWidget(self.lbl_row_count)
+        h.addStretch(1)
+        return bar
+
+    # ── Business logic ────────────────────────────────────────────────────────
     def _refresh_project_data(self):
         self.project_data = self.project_manager.load_project(self.project_dir) or self.project_data
         self.enabled_bdds = list(self.project_data.get("enabled_bdds", JUSTIFICATION_TYPES))
 
-    def _get_selected_row_data(self) -> list[dict]:
-        table = self._current_tab_widget().table
-
-        selected_rows = sorted(set(index.row() for index in table.selectionModel().selectedRows()))
-        results: list[dict] = []
-
-        for row_index in selected_rows:
-            first_item = table.item(row_index, 0)
-            if first_item is None:
-                continue
-
-            row_data = first_item.data(QtCore.Qt.UserRole)
-            if row_data:
-                results.append(row_data)
-
-        return results
-
-    def _build_tabs(self) -> QtWidgets.QWidget:
-        wrapper = QtWidgets.QWidget()
-        wrapper.setStyleSheet(f"background:{BG};")
-
-        layout = QtWidgets.QVBoxLayout(wrapper)
-        layout.setContentsMargins(12, 8, 12, 0)
-        layout.setSpacing(0)
-
-        self.tabs = QtWidgets.QTabWidget()
-        self.tabs.setDocumentMode(True)
-        self.tabs.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.tabs.setStyleSheet(f"""
-            QTabWidget::pane {{
-                border: 1px solid {GRAY_BORDER};
-                border-radius: 8px;
-                background: {WHITE};
-                margin-top: -1px;
-            }}
-            QTabBar::tab {{
-                background: transparent; color:{GRAY_TEXT};
-                padding: 8px 22px;
-                border: 1px solid transparent;
-                border-bottom: none;
-                border-radius: 6px 6px 0 0;
-                margin-right: 2px; font-size:9pt;
-            }}
-            QTabBar::tab:selected {{
-                background: {WHITE}; color:{BLUE}; font-weight:bold;
-                border: 1px solid {GRAY_BORDER}; border-bottom: 1px solid {WHITE};
-            }}
-            QTabBar::tab:hover:!selected {{ background:{BLUE_LIGHT}; color:{BLUE}; }}
-        """)
-        self.tabs.currentChanged.connect(self._on_tab_changed)
-
-        self.tab_widgets_by_name = {}
-
-        self.tab_accueil = MainTab(self)
-        self.tab_widgets_by_name["Tous"] = self.tab_accueil
-        self.tabs.addTab(self.tab_accueil, "Tous")
-        self.tab_accueil.table.itemSelectionChanged.connect(self._update_detail_panel)
-
-        for livrable in self.enabled_bdds:
-            tab = MainTab(self)
-            self.tab_widgets_by_name[livrable] = tab
-            self.tabs.addTab(tab, livrable)
-            tab.table.itemSelectionChanged.connect(self._update_detail_panel)
-
-        layout.addWidget(self.tabs)
-        return wrapper
-
-    def _build_statusbar(self) -> QtWidgets.QWidget:
-        bar = QtWidgets.QWidget()
-        bar.setFixedHeight(28)
-        bar.setStyleSheet(f"background:{WHITE}; border-top:1px solid {GRAY_BORDER};")
-        h = QtWidgets.QHBoxLayout(bar)
-        h.setContentsMargins(16, 0, 16, 0)
-
-        self.lbl_last_update = QtWidgets.QLabel("Dernière actualisation : —")
-        self.lbl_last_update.setFont(F_SMALL)
-        self.lbl_last_update.setStyleSheet(f"color:{GRAY_TEXT};")
-
-        self.lbl_row_count = QtWidgets.QLabel("0 lignes")
-        self.lbl_row_count.setFont(F_SMALL)
-        self.lbl_row_count.setStyleSheet(f"color:{GRAY_TEXT};")
-
-        h.addWidget(self.lbl_last_update)
-        h.addStretch()
-        h.addWidget(self.lbl_row_count)
-        return bar
-
-    def _current_tab_widget(self) -> MainTab:
-        tab_name = self.tabs.tabText(self.tabs.currentIndex())
-        return self.tab_widgets_by_name.get(tab_name, self.tab_accueil)
-
-    def _build_cecc_field_rows(self, cecc_fields: dict) -> list[tuple[str, str]]:
-        pretty_labels = {
-            "manufacturer_doc": "Fournisseur Doc / MANUFACTURER",
-            "manufacturer_part_number": "Manufacturer Part Number",
-            "nom_cecc": "Nom : CECC",
-            "cecc_classement": "CECC Classement",
-            "categorie_export": "Catégorie export",
-            "licence": "Licence",
-            "numero_licence": "N° Licence",
-            "pays_origine_4a": "Pays Origine 4a",
-            "ear99_value_usd": "EAR99 Value (USD)",
-            "eccn_value_usd": "ECCN value (USD)",
-            "composants_controles_export": "Composants contrôlés export",
-            "pays_origine": "Pays d'origine",
-            "classement_export": "Classement à l'export",
-            "code_douanier": "Code douanier / Tariff Code",
-            "cecc_etat": "Statut CECC",
-        }
-
-        rows: list[tuple[str, str]] = []
-        for key, label in pretty_labels.items():
-            value = str(cecc_fields.get(key, "") or "").strip()
-            rows.append((label, value if value else "—"))
-
-        return rows
-
     def _normalize_requirement_code(self, code: str) -> str:
         code = str(code or "").strip()
-
-        if " — " in code:
-            code = code.split(" — ", 1)[0].strip()
-
-        if " | " in code:
-            code = code.split(" | ", 1)[0].strip()
-
+        for sep in (" — ", " | "):
+            if sep in code:
+                code = code.split(sep, 1)[0].strip()
         return code
-
 
     def _code_matches(self, a: str, b: str) -> bool:
         return self._normalize_requirement_code(a) == self._normalize_requirement_code(b)
 
-
     def _is_not_applicable(self, docs: list[dict], code: str) -> bool:
         for doc in docs:
-            for na_code in doc.get("not_applicable_codes", []) or []:
+            for na_code in (doc.get("not_applicable_codes") or []):
                 if self._code_matches(na_code, code):
                     return True
         return False
 
-    def _build_detail_rows(self, row_data: dict) -> list[dict]:
-        docs = row_data.get("docs", [])
-        justif_type = row_data.get("type", "").upper()
-
-        if justif_type == "CE":
-            expected_requirements = CE_REQUIREMENTS
-        elif justif_type == "DPE":
-            expected_requirements = DPE_REQUIREMENTS
-        else:
-            return []
-
-        latest_by_code: dict[str, dict] = {}
-
-        for doc in sorted(docs, key=lambda d: d.get("uploaded_at", ""), reverse=True):
-            if not self._doc_applies_to_type(doc, justif_type):
-                continue
-
-            codes = doc.get("requirement_codes", []) or []
-            labels = doc.get("requirement_labels", []) or []
-
-            for i, code in enumerate(codes):
-                normalized_code = self._normalize_requirement_code(code)
-
-                if normalized_code not in latest_by_code:
-                    latest_by_code[normalized_code] = {
-                        "filename": doc.get("stored_filename", ""),
-                        "path": str(self.project_dir / doc["relative_path"]),
-                        "label": labels[i] if i < len(labels) else "",
-                    }
-
-        detail_rows: list[dict] = []
-
-        for code, default_label in expected_requirements:
-            normalized_code = self._normalize_requirement_code(code)
-            data = latest_by_code.get(normalized_code)
-
-            is_na = self._is_not_applicable(docs, code)
-
-            if is_na:
-                applicability = "Non applicable"
-            elif data:
-                applicability = "Applicable"
-            else:
-                applicability = "Non défini"
-
-            label = data["label"] if data and data.get("label") else default_label
-
-            detail_rows.append({
-                "requirement": f"{code} | {label}",
-                "applicability": applicability,
-                "filename": "N/A" if is_na else (data["filename"] if data else "—"),
-                "path": "" if is_na else (data["path"] if data else ""),
-            })
-
-        return detail_rows
-
-    def _on_tab_changed(self, index: int):
-        tab_name = self.tabs.tabText(index)
-        self.active_tab_type = None if tab_name == "Tous" else tab_name
-
-        self._load_current_tab_only()
-
-        current_count = len(self.current_rows_by_tab.get(tab_name, []))
-        if hasattr(self, "lbl_row_count"):
-            self.lbl_row_count.setText(f"{current_count} lignes")
-
-        self._update_detail_panel()
-
-    def _is_filter_active(self, column_key: str) -> bool:
-        allowed_values = self.column_filters.get(column_key)
-        if allowed_values is None:
-            return False
-        all_values = set(self._get_column_values(self._all_rows_cache, column_key))
-        return set(allowed_values) != all_values
-
-    def _update_filter_buttons(self):
-        mapping = {
-            "supplier": self.filter_supplier_button,
-            "reference": self.filter_reference_button,
-            "type": self.filter_type_button,
-            "completion": self.filter_completion_button,
-        }
-        for key, button in mapping.items():
-            button.set_active(self._is_filter_active(key))
-
-    def _export_templates(self):
-        try:
-            export_paths = export_project_templates(self.project_dir)
-            QtWidgets.QMessageBox.information(
-                self,
-                "Export terminé",
-                "Les fichiers ont été exportés avec succès :\n\n" + "\n".join(str(p) for p in export_paths),
-            )
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Erreur export",
-                f"Impossible d'exporter les templates.\n\n{e}",
-            )
-
-    def _apply_filters(self, rows: list[dict]) -> list[dict]:
-        filtered = rows
-        for key, allowed_values in self.column_filters.items():
-            if allowed_values is None:
-                continue
-            filtered = [row for row in filtered if str(row.get(key, "")) in allowed_values]
-        return filtered
-
-    def _get_column_values(self, rows: list[dict], column_key: str) -> list[str]:
-        values = []
-        for row in rows:
-            value = row.get(column_key, "")
-            if value is None:
-                value = ""
-            values.append(str(value))
-        return sorted(set(values), key=str.lower)
-
-    def _open_column_filter(self, column_key: str, title: str):
-        rows = self._all_rows_cache
-        values = self._get_column_values(rows, column_key)
-        current_checked = set(values) if self.column_filters[column_key] is None else self.column_filters[column_key]
-
-        dialog = FilterPopup(title=title, values=values, checked_values=current_checked, parent=self)
-        if dialog.exec() == QtWidgets.QDialog.Accepted:
-            checked = dialog.get_checked_values()
-            self.column_filters[column_key] = None if set(checked) == set(values) else checked
-            self._load_table(rebuild_cache=False, update_global_kpis=False)
-
-    
-
-    def _group_uploaded_documents(self):
-        uploaded = get_uploaded_documents(self.project_dir)
-        by_supplier_ref_type = defaultdict(list)
-        by_supplier_ref = defaultdict(list)
-
-        for doc in uploaded:
-            supplier = doc["supplier"]
-            reference = doc["reference"]
-            justif_type = doc["source_justification_type"].upper()
-            by_supplier_ref[(supplier, reference)].append(doc)
-            by_supplier_ref_type[(supplier, reference, justif_type)].append(doc)
-
-        return by_supplier_ref, by_supplier_ref_type
-
-    def _scan_supplier_reference_pairs(self) -> list[tuple[str, str]]:
-        rows = self.project_data.get("rows", []) or []
-        pairs = []
-
-        for row in rows:
-            supplier = str(row.get("supplier", "")).strip()
-            reference = str(row.get("reference", "")).strip()
-            if supplier:
-                pairs.append((supplier, reference))
-
-        if pairs:
-            return sorted(set(pairs), key=lambda x: (x[0].lower(), x[1].lower()))
-
-        dossier_number = self.project_data["dossier_number"]
-        pairs = []
-
-        for bdd_type in self.enabled_bdds:
-            docs_dir = self.project_dir / f"BDD {bdd_type} {dossier_number}" / "Documents"
-            if not docs_dir.exists():
-                continue
-
-            for supplier_dir in docs_dir.iterdir():
-                if not supplier_dir.is_dir():
-                    continue
-
-                for ref_dir in supplier_dir.iterdir():
-                    if ref_dir.is_dir():
-                        pairs.append((supplier_dir.name, ref_dir.name))
-
-        return sorted(set(pairs), key=lambda x: (x[0].lower(), x[1].lower()))
-
     def _doc_applies_to_type(self, doc: dict, justif_type: str) -> bool:
         justif_type = str(justif_type).upper()
-
         source_type = str(doc.get("source_justification_type", "")).upper()
-
-        stored_in_bdds = [
-            str(v).upper()
-            for v in doc.get("stored_in_bdds", [])
-        ]
-
-        return source_type == justif_type or justif_type in stored_in_bdds
-
-    def _build_table_rows(self) -> list[dict]:
-        by_supplier_ref, by_supplier_ref_type = self._group_uploaded_documents()
-        pairs = self._scan_supplier_reference_pairs()
-
-        rows_meta = {
-            (
-                str(r.get("supplier", "")).strip(),
-                str(r.get("reference", "")).strip(),
-            ): r
-            for r in self.project_data.get("rows", []) or []
-        }
-
-        rows = []
-
-        for supplier, reference in pairs:
-            meta = rows_meta.get((supplier, reference), {})
-
-            for justif_type in self.enabled_bdds:
-                docs = [
-                    doc for doc in by_supplier_ref.get((supplier, reference), [])
-                    if self._doc_applies_to_type(doc, justif_type)
-                ]
-
-                doc_count = self._count_documents_in_folder(supplier, reference, justif_type)
-
-                if justif_type == "CE":
-                    completion_value = self._compute_ce_dpe_completion(
-                        docs,
-                        ["2006/42/UE", "2011/65/UE", "2014/30/UE", "2014/68/UE", "AUTRES"],
-                    )
-                elif justif_type == "DPE":
-                    completion_value = self._compute_ce_dpe_completion(
-                        docs,
-                        [
-                            "2011/65/UE", "2012/19/UE", "2006/66/CE", "1907/2006",
-                            "2019/1021", "1005/2009", "517/2014", "2017/852",
-                            "528/2012", "2013/59/Euratom", "2017/821", "2016/1628",
-                        ],
-                    )
-                else:
-                    completion_value = self._compute_cecc_completion(docs)
-
-                rows.append({
-                    "supplier": supplier,
-                    "reference": reference,
-                    "label": meta.get("label", ""),
-                    "mnp": meta.get("mnp", ""),
-                    "order_number": meta.get("order_number", ""),
-                    "type": justif_type,
-                    "documents": doc_count,
-                    "completion": f"{int(round(completion_value * 100))} %",
-                    "completion_value": completion_value,
-                    "docs": docs,
-                })
-
-        return rows
-
-    def _compute_requirement_score(self, docs: list[dict], code: str) -> float:
-        matching_docs = [
-            doc for doc in docs
-            if any(
-                self._code_matches(doc_code, code)
-                for doc_code in doc.get("requirement_codes", []) or []
-            )
-        ]
-        non_empty = len(matching_docs)
-        if non_empty == 0:
-            return 0.0
-        estimation_count = sum(
-            1 for doc in matching_docs
-            if "estimation" in (doc.get("stored_filename", "") or "").lower()
-        )
-        denominator = non_empty
-        if denominator == 0:
-            return 0.0
-        score = (non_empty - estimation_count) / denominator
-        return max(0.0, min(1.0, score))
-
-    def _compute_ce_dpe_completion(self, docs: list[dict], requirement_codes: list[str]) -> float:
-        if not requirement_codes:
-            return 0.0
-
-        applicable_codes = [
-            code for code in requirement_codes
-            if not self._is_not_applicable(docs, code)
-        ]
-
-        if not applicable_codes:
-            return 1.0
-
-        scores = [
-            self._compute_requirement_score(docs, code)
-            for code in applicable_codes
-        ]
-
-        return sum(scores) / len(scores)
-
-    def _compute_cecc_completion(self, docs: list[dict]) -> float:
-        statuses = [(doc.get("cecc_fields", {}) or {}).get("status", "").strip() for doc in docs]
-        valides = sum(1 for s in statuses if s == "Validé")
-        relances = sum(1 for s in statuses if s == "Relancé")
-        non_conformes = sum(1 for s in statuses if s == "Non conforme")
-        estimations = sum(1 for s in statuses if s == "Estimation")
-        denominator = valides + relances + non_conformes + estimations
-        if denominator == 0:
-            return 0.0
-        return valides / denominator
-
-    def _load_rows_into_tab(self, tab: MainTab, rows: list[dict]):
-        table = tab.table
-        table.setSortingEnabled(False)
-        table.clearContents()
-        table.setRowCount(len(rows))
-        table.horizontalHeader().setDefaultAlignment(QtCore.Qt.AlignCenter)
-
-        for row_index, row in enumerate(rows):
-            values = [row["supplier"],row["reference"],row.get("label", ""),row.get("mnp", ""),row.get("order_number", ""),row["type"],str(row["documents"]),row["completion"],]
-            for col_index, value in enumerate(values):
-                item = QtWidgets.QTableWidgetItem(value)
-                if col_index == 7:
-                    pct = row.get("completion_value", 0.0)
-                    color = GREEN_OK if pct >= 1.0 else (ORANGE_WARN if pct > 0 else RED_KO)
-                    item.setForeground(QtGui.QBrush(QtGui.QColor(color)))
-                if col_index in (6, 7):
-                    item.setTextAlignment(QtCore.Qt.AlignCenter)
-                else:
-                    item.setTextAlignment(QtCore.Qt.AlignVCenter | QtCore.Qt.AlignLeft)
-                item.setData(QtCore.Qt.UserRole, row)
-                table.setItem(row_index, col_index, item)
-
-        table.resizeRowsToContents()
-        table.setSortingEnabled(True)
-        table.sortByColumn(0, QtCore.Qt.AscendingOrder)
-
-        if table.rowCount() > 0:
-            table.selectRow(0)
-        else:
-            tab.detail.clear()
-
-    def _load_table(self, rebuild_cache: bool = True, update_global_kpis: bool = True):
-        if rebuild_cache:
-            self._refresh_project_data()
-            self._all_rows_cache = self._build_table_rows()
-
-            if update_global_kpis:
-                self._update_global_kpis(self._all_rows_cache)
-
-        self._filtered_rows_cache = self._apply_filters(self._all_rows_cache)
-
-        total_refs = len({
-            (row["supplier"], row["reference"])
-            for row in self._filtered_rows_cache
-        })
-
-        refs_with_docs = len({
-            (row["supplier"], row["reference"])
-            for row in self._filtered_rows_cache
-            if row["documents"] > 0
-        })
-
-        self.lbl_refs.setText(f"Références : {total_refs}")
-        self.lbl_docs_count.setText(f"Avec docs : {refs_with_docs}")
-
-        rows_by_tab = {"Tous": list(self._filtered_rows_cache)}
-
-        for livrable in self.enabled_bdds:
-            rows_by_tab[livrable] = [
-                row for row in self._filtered_rows_cache
-                if row["type"] == livrable
-            ]
-
-        self.current_rows_by_tab = rows_by_tab
-
-        self._load_current_tab_only()
-
-        current_tab_name = self.tabs.tabText(self.tabs.currentIndex())
-        current_count = len(self.current_rows_by_tab.get(current_tab_name, []))
-
-        self.lbl_last_update.setText(
-            f"Dernière actualisation : {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-        )
-        if hasattr(self, "lbl_row_count"):
-            self.lbl_row_count.setText(f"{current_count} lignes")
-
-        self._update_filter_buttons()
-        self._update_detail_panel()
-
-    def _update_global_kpis(self, rows: list[dict]):
-        ce_rows = [row for row in rows if row["type"] == "CE"]
-        cecc_rows = [row for row in rows if row["type"] == "CECC"]
-        dpe_rows = [row for row in rows if row["type"] == "DPE"]
-
-        self.kpi_ce.set_value(
-            round((sum(r.get("completion_value", 0.0) for r in ce_rows) / len(ce_rows)) * 100)
-            if ce_rows else 0
-        )
-
-        self.kpi_cecc.set_value(
-            round((sum(r.get("completion_value", 0.0) for r in cecc_rows) / len(cecc_rows)) * 100)
-            if cecc_rows else 0
-        )
-
-        self.kpi_dpe.set_value(
-            round((sum(r.get("completion_value", 0.0) for r in dpe_rows) / len(dpe_rows)) * 100)
-            if dpe_rows else 0
-        )
-
-
-    def _load_current_tab_only(self):
-        current_tab_name = self.tabs.tabText(self.tabs.currentIndex())
-        tab_widget = self.tab_widgets_by_name.get(current_tab_name)
-
-        if not tab_widget:
-            return
-
-        rows = self.current_rows_by_tab.get(current_tab_name, [])
-        self._load_rows_into_tab(tab_widget, rows)
-
-    def _ensure_project_structure(self, rows: list[dict], enabled_bdds: list[str]):
-        dossier_number = self.project_data["dossier_number"]
-        row_pairs = [(row["supplier"], row["reference"]) for row in rows]
-
-        for bdd_type in enabled_bdds:
-            bdd_dir = self.project_dir / f"BDD {bdd_type} {dossier_number}"
-            docs_dir = bdd_dir / "Documents"
-            bdd_dir.mkdir(parents=True, exist_ok=True)
-            docs_dir.mkdir(parents=True, exist_ok=True)
-
-            excel_path = bdd_dir / f"BDD_{bdd_type}_{dossier_number}.xlsx"
-            if not excel_path.exists():
-                excel_path.touch()
-
-            create_folders_and_subfolders(docs_dir, row_pairs)
-
-    def _remove_row_folders(self, removed_rows: list[dict]):
-        dossier_number = self.project_data["dossier_number"]
-        if not removed_rows:
-            return
-
-        answer = QtWidgets.QMessageBox.question(
-            self,
-            "Suppression de lignes",
-            "Supprimer aussi les dossiers physiques associés aux lignes supprimées ?",
-            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-            QtWidgets.QMessageBox.No,
-        )
-        if answer != QtWidgets.QMessageBox.Yes:
-            return
-
-        import shutil
-
-        for row in removed_rows:
-            supplier = row["supplier"]
-            reference = row["reference"]
-
-            for bdd_type in self.enabled_bdds:
-                target = self.project_dir / f"BDD {bdd_type} {dossier_number}" / "Documents" / supplier / reference
-                if target.exists():
-                    shutil.rmtree(target, ignore_errors=True)
-
-    def _open_project_settings(self):
-        fresh_project_data = self.project_manager.load_project(self.project_dir)
-
-        if not fresh_project_data:
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Paramétrage projet",
-                "Impossible de relire les données du projet."
-            )
-            return
-
-        dialog = NewProjectDialog(self, project_data=fresh_project_data)
-
-        result = dialog.exec()
-
-        if result != QtWidgets.QDialog.Accepted:
-            return
-
-        updated_project_data = dialog.updated_project_data
-        if not updated_project_data:
-            return
-
-        self.project_data = updated_project_data
-        self.enabled_bdds = list(
-            self.project_data.get("enabled_bdds", JUSTIFICATION_TYPES)
-        )
-
-        self._refresh_project_data()
-        self._load_table()
-
-        QtWidgets.QMessageBox.information(
-            self,
-            "Paramétrage projet",
-            "Le paramétrage du projet a bien été mis à jour."
-        )
-
-    def _update_detail_panel(self):
-        tab = self._current_tab_widget()
-        table = tab.table
-        detail = tab.detail
-
-        detail.tbl_docs.setRowCount(0)
-        detail.tbl_fields.setRowCount(0)
-        detail.tbl_fields.hide()
-        detail.sep_fields.hide()
-
-        selected_ranges = table.selectedRanges()
-        if not selected_ranges:
-            detail.clear()
-            detail.lbl_title.setText("Sélectionne une ligne")
-            return
-
-        row_index = selected_ranges[0].topRow()
-        first_item = table.item(row_index, 0)
-        if first_item is None:
-            detail.clear()
-            detail.lbl_title.setText("Sélectionne une ligne")
-            return
-
-        row_data = first_item.data(QtCore.Qt.UserRole)
-        if not row_data:
-            detail.clear()
-            detail.lbl_title.setText("Sélectionne une ligne")
-            return
-
-        supplier = row_data["supplier"]
-        reference = row_data["reference"]
-        justif_type = row_data["type"]
-        docs = row_data["docs"]
-
-        detail.set_header(supplier, reference, justif_type, len(docs))
-
-        if justif_type == "CECC":
-            cecc_display_rows = []
-
-            latest_doc = None
-            if docs:
-                docs_sorted = sorted(docs, key=lambda d: d.get("uploaded_at", ""), reverse=True)
-                latest_doc = docs_sorted[0]
-
-            cecc_fields = (latest_doc.get("cecc_fields", {}) if latest_doc else {}) or {}
-
-            for label, value in self._build_cecc_field_rows(cecc_fields):
-                cecc_display_rows.append({
-                    "requirement": label,
-                    "filename": value,
-                    "path": str(self.project_dir / latest_doc["relative_path"]) if latest_doc else "",
-                    "stored_filename": latest_doc.get("stored_filename", "") if latest_doc else "",
-                })
-
-            detail.set_fields([], justif_type)
-            detail.set_linked_docs(cecc_display_rows, justif_type)
-
-        else:
-            detail.set_fields([], justif_type)
-            detail_rows = self._build_detail_rows(row_data)
-            detail.set_linked_docs(detail_rows, justif_type)
-
-    def _open_document_from_detail_table(self, row: int, column: int):
-        table = self._current_tab_widget().detail.tbl_docs
-
-        doc_col = 1 if table.columnCount() == 2 else 2
-
-        if column != doc_col:
-            return
-
-        item = table.item(row, doc_col)
-        if item is None:
-            return
-
-        file_path = item.data(QtCore.Qt.UserRole)
-        if not file_path:
-            return
-
-        path = Path(file_path)
-
-        if not path.exists():
-            QtWidgets.QMessageBox.warning(
-                self,
-                "Fichier introuvable",
-                f"Impossible d'ouvrir le fichier :\n\n{path}"
-            )
-            return
-
-        try:
-            if sys.platform.startswith("win"):
-                os.startfile(str(path))
-            elif sys.platform == "darwin":
-                subprocess.run(["open", str(path)], check=False)
-            else:
-                subprocess.run(["xdg-open", str(path)], check=False)
-
-        except Exception as e:
-            QtWidgets.QMessageBox.critical(
-                self,
-                "Erreur d'ouverture",
-                f"Impossible d'ouvrir le fichier.\n\n{e}"
-            )
+        stored_bdds = [str(v).upper() for v in (doc.get("stored_in_bdds") or [])]
+        return source_type == justif_type or justif_type in stored_bdds
 
     def _count_documents_in_folder(self, supplier: str, reference: str, justif_type: str) -> int:
-        dossier_number = self.project_data["dossier_number"]
-
+        dossier_number = self.project_data.get("dossier_number", "")
         folder = (
             self.project_dir
             / f"BDD {justif_type} {dossier_number}"
@@ -1402,50 +1039,379 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             / supplier
             / reference
         )
-
         if not folder.exists() or not folder.is_dir():
             return 0
+        return sum(1 for p in folder.iterdir() if p.is_file())
 
-        return sum(1 for path in folder.iterdir() if path.is_file())
+    def _compute_requirement_score(self, docs: list[dict], code: str) -> float:
+        matching = [
+            d for d in docs
+            if any(self._code_matches(c, code) for c in (d.get("requirement_codes") or []))
+        ]
+        if not matching:
+            return 0.0
+        estimations = sum(
+            1 for d in matching
+            if "estimation" in (d.get("stored_filename") or "").lower()
+        )
+        return max(0.0, min(1.0, (len(matching) - estimations) / len(matching)))
 
+    def _compute_ce_dpe_completion(self, docs: list[dict], req_codes: list[str]) -> float:
+        if not req_codes:
+            return 0.0
+        applicable = [c for c in req_codes if not self._is_not_applicable(docs, c)]
+        if not applicable:
+            return 1.0
+        return sum(self._compute_requirement_score(docs, c) for c in applicable) / len(applicable)
+
+    def _compute_cecc_completion(self, docs: list[dict]) -> float:
+        statuses = [(d.get("cecc_fields") or {}).get("status", "").strip() for d in docs]
+        valides  = sum(1 for s in statuses if s == "Validé")
+        total    = sum(1 for s in statuses if s in ("Validé", "Relancé", "Non conforme", "Estimation"))
+        return valides / total if total else 0.0
+
+    def _scan_supplier_reference_pairs(self) -> list[tuple[str, str]]:
+        rows = self.project_data.get("rows") or []
+        pairs = [
+            (str(r.get("supplier", "")).strip(), str(r.get("reference", "")).strip())
+            for r in rows
+            if str(r.get("supplier", "")).strip()
+        ]
+        if pairs:
+            return sorted(set(pairs), key=lambda x: (x[0].lower(), x[1].lower()))
+
+        dossier_number = self.project_data.get("dossier_number", "")
+        pairs = []
+        for bdd_type in self.enabled_bdds:
+            docs_dir = self.project_dir / f"BDD {bdd_type} {dossier_number}" / "Documents"
+            if not docs_dir.exists():
+                continue
+            for sup_dir in docs_dir.iterdir():
+                if sup_dir.is_dir():
+                    for ref_dir in sup_dir.iterdir():
+                        if ref_dir.is_dir():
+                            pairs.append((sup_dir.name, ref_dir.name))
+        return sorted(set(pairs), key=lambda x: (x[0].lower(), x[1].lower()))
+
+    def _group_uploaded_documents(self):
+        uploaded = get_uploaded_documents(self.project_dir)
+        by_sup_ref      = defaultdict(list)
+        by_sup_ref_type = defaultdict(list)
+        for doc in uploaded:
+            sup = doc["supplier"]
+            ref = doc["reference"]
+            t   = doc["source_justification_type"].upper()
+            by_sup_ref[(sup, ref)].append(doc)
+            by_sup_ref_type[(sup, ref, t)].append(doc)
+        return by_sup_ref, by_sup_ref_type
+
+    def _build_table_rows(self) -> list[dict]:
+        pairs              = self._scan_supplier_reference_pairs()
+        by_sup_ref, _      = self._group_uploaded_documents()
+
+        # Row metadata (label / order_number from project data)
+        row_meta: dict[tuple[str, str], dict] = {}
+        for r in (self.project_data.get("rows") or []):
+            key = (str(r.get("supplier", "")).strip(), str(r.get("reference", "")).strip())
+            row_meta[key] = {
+                "label":        r.get("label", ""),
+                "order_number": r.get("order_number", ""),
+            }
+
+        CE_CODES  = ["2006/42/UE", "2011/65/UE", "2014/30/UE", "2014/68/UE", "AUTRES"]
+        DPE_CODES = [
+            "2011/65/UE", "2012/19/UE", "2006/66/CE", "1907/2006",
+            "2019/1021", "1005/2009", "517/2014", "2017/852",
+            "528/2012", "2013/59/Euratom", "2017/821", "2016/1628",
+        ]
+
+        rows: list[dict] = []
+        for supplier, reference in pairs:
+            meta = row_meta.get((supplier, reference), {})
+            all_docs_for_ref = by_sup_ref.get((supplier, reference), [])
+
+            for justif_type in self.enabled_bdds:
+                docs      = [d for d in all_docs_for_ref if self._doc_applies_to_type(d, justif_type)]
+                doc_count = self._count_documents_in_folder(supplier, reference, justif_type)
+
+                if justif_type == "CE":
+                    completion_value = self._compute_ce_dpe_completion(docs, CE_CODES)
+                elif justif_type == "DPE":
+                    completion_value = self._compute_ce_dpe_completion(docs, DPE_CODES)
+                else:
+                    completion_value = self._compute_cecc_completion(docs)
+
+                rows.append({
+                    "supplier":         supplier,
+                    "reference":        reference,
+                    "label":            meta.get("label", ""),
+                    "order_number":     meta.get("order_number", ""),
+                    "type":             justif_type,
+                    "documents":        doc_count,
+                    "documents_db":     len(docs),
+                    "completion":       f"{round(completion_value * 100)} %",
+                    "completion_value": completion_value,
+                    "docs":             docs,
+                })
+        return rows
+
+    def _apply_filters(self, rows: list[dict]) -> list[dict]:
+        for key, allowed in self.column_filters.items():
+            if allowed is None:
+                continue
+            rows = [r for r in rows if str(r.get(key, "")) in allowed]
+        return rows
+
+    def _get_column_values(self, rows: list[dict], key: str) -> list[str]:
+        return sorted({str(r.get(key, "")) for r in rows}, key=str.lower)
+
+    def _is_filter_active(self, key: str) -> bool:
+        allowed = self.column_filters.get(key)
+        if allowed is None:
+            return False
+        all_vals = set(self._get_column_values(self._all_rows_cache, key))
+        return set(allowed) != all_vals
+
+    def _update_filter_chips(self):
+        self.chip_supplier.set_active(self._is_filter_active("supplier"))
+        self.chip_reference.set_active(self._is_filter_active("reference"))
+        self.chip_type.set_active(self._is_filter_active("type"))
+        self.chip_completion.set_active(self._is_filter_active("completion"))
+
+    def _update_kpis(self, rows: list[dict]):
+        def avg_pct(lst): return round(
+            sum(r.get("completion_value", 0) for r in lst) / len(lst) * 100
+        ) if lst else 0
+
+        ce_rows   = [r for r in rows if r["type"] == "CE"]
+        cecc_rows = [r for r in rows if r["type"] == "CECC"]
+        dpe_rows  = [r for r in rows if r["type"] == "DPE"]
+
+        ce_pct   = avg_pct(ce_rows)
+        cecc_pct = avg_pct(cecc_rows)
+        dpe_pct  = avg_pct(dpe_rows)
+
+        self.kpi_ce.set_value(f"{ce_pct} %",   ce_pct)
+        self.kpi_cecc.set_value(f"{cecc_pct} %", cecc_pct)
+        self.kpi_dpe.set_value(f"{dpe_pct} %",  dpe_pct)
+
+        total_refs   = len({(r["supplier"], r["reference"]) for r in rows})
+        refs_with_docs = len({
+            (r["supplier"], r["reference"])
+            for r in rows if r["documents"] > 0
+        })
+        self.kpi_refs.set_value(str(total_refs))
+        self.kpi_docs.set_value(str(refs_with_docs))
+
+    def _load_table(self, rebuild_cache: bool = True):
+        if rebuild_cache:
+            self._refresh_project_data()
+            self._all_rows_cache = self._build_table_rows()
+
+        self._filtered_rows_cache = self._apply_filters(self._all_rows_cache)
+        self._update_kpis(self._filtered_rows_cache)
+
+        # Distribute rows to tabs
+        rows_by_tab = {"Tous": list(self._filtered_rows_cache)}
+        for bdd in self.enabled_bdds:
+            rows_by_tab[bdd] = [r for r in self._filtered_rows_cache if r["type"] == bdd]
+        self.current_rows_by_tab = rows_by_tab
+
+        self._load_current_tab()
+        self._update_filter_chips()
+
+        now = datetime.now().strftime("%d/%m/%Y %H:%M")
+        self._lbl_date.setText(now)
+
+    def _load_current_tab(self):
+        name = self.tabs.tabText(self.tabs.currentIndex())
+        tab  = self.tab_widgets_by_name.get(name)
+        if not tab:
+            return
+        rows = self.current_rows_by_tab.get(name, [])
+        tab.load_rows(rows)
+        self.lbl_row_count.setText(f"{len(rows)} lignes")
+        self.detail_panel.clear()
+
+    def _build_detail_rows(self, row_data: dict) -> list[dict]:
+        docs        = row_data.get("docs", [])
+        justif_type = row_data.get("type", "").upper()
+
+        if justif_type == "CE":
+            expected = CE_REQUIREMENTS
+        elif justif_type == "DPE":
+            expected = DPE_REQUIREMENTS
+        elif justif_type == "CECC":
+            return self._build_cecc_rows(docs)
+        else:
+            return []
+
+        latest_by_code: dict[str, dict] = {}
+        for doc in sorted(docs, key=lambda d: d.get("uploaded_at", ""), reverse=True):
+            if not self._doc_applies_to_type(doc, justif_type):
+                continue
+            for i, code in enumerate((doc.get("requirement_codes") or [])):
+                nc = self._normalize_requirement_code(code)
+                if nc not in latest_by_code:
+                    labels = doc.get("requirement_labels") or []
+                    latest_by_code[nc] = {
+                        "filename": doc.get("stored_filename", ""),
+                        "path":     str(self.project_dir / doc["relative_path"]),
+                        "label":    labels[i] if i < len(labels) else "",
+                    }
+
+        detail_rows: list[dict] = []
+        for code, default_label in expected:
+            nc   = self._normalize_requirement_code(code)
+            data = latest_by_code.get(nc)
+            is_na = self._is_not_applicable(docs, code)
+            label = (data["label"] if data and data.get("label") else default_label)
+            detail_rows.append({
+                "requirement": f"{code} | {label}",
+                "applicability": "Non applicable" if is_na else "Applicable",
+                "filename": "N/A" if is_na else (data["filename"] if data else "—"),
+                "path":    "" if is_na else (data["path"] if data else ""),
+            })
+        return detail_rows
+
+    def _build_cecc_rows(self, docs: list[dict]) -> list[dict]:
+        PRETTY = {
+            "manufacturer_doc":           "Fournisseur Doc / MANUFACTURER",
+            "manufacturer_part_number":   "Manufacturer Part Number",
+            "nom_cecc":                   "Nom : CECC",
+            "cecc_classement":            "CECC Classement",
+            "categorie_export":           "Catégorie export",
+            "licence":                    "Licence",
+            "numero_licence":             "N° Licence",
+            "pays_origine_4a":            "Pays Origine 4a",
+            "ear99_value_usd":            "EAR99 Value (USD)",
+            "eccn_value_usd":             "ECCN value (USD)",
+            "composants_controles_export":"Composants contrôlés export",
+            "pays_origine":               "Pays d'origine",
+            "classement_export":          "Classement à l'export",
+            "code_douanier":              "Code douanier / Tariff Code",
+            "cecc_etat":                  "Statut CECC",
+        }
+        latest_doc = max(docs, key=lambda d: d.get("uploaded_at", ""), default=None)
+        fields = ((latest_doc.get("cecc_fields") or {}) if latest_doc else {})
+        path   = str(self.project_dir / latest_doc["relative_path"]) if latest_doc else ""
+
+        rows: list[dict] = []
+        for key, label in PRETTY.items():
+            val = str(fields.get(key, "") or "").strip()
+            rows.append({
+                "requirement": label,
+                "filename":    val or "—",
+                "path":        path if key == "nom_cecc" else "",
+            })
+        return rows
+
+    # ── Slots ─────────────────────────────────────────────────────────────────
+    def _on_tab_changed(self, _index: int):
+        self._load_current_tab()
+
+    def _on_row_selected(self, row_data: dict):
+        detail_rows = self._build_detail_rows(row_data)
+        self.detail_panel.populate(row_data, detail_rows)
+
+    def _open_column_filter(self, key: str, title: str):
+        values  = self._get_column_values(self._all_rows_cache, key)
+        current = self.column_filters[key] or set(values)
+        dlg = FilterPopup(title=title, values=values, checked_values=current, parent=self)
+        if dlg.exec() == QtWidgets.QDialog.Accepted:
+            checked = dlg.get_checked_values()
+            self.column_filters[key] = None if checked == set(values) else checked
+            self._load_table(rebuild_cache=False)
 
     def _open_upload_from_selection(self):
-        selected_rows = self._get_selected_row_data()
-
-        if not selected_rows:
+        name = self.tabs.tabText(self.tabs.currentIndex())
+        tab  = self.tab_widgets_by_name.get(name)
+        if not tab:
+            return
+        selected = tab.selected_rows_data()
+        if not selected:
             QtWidgets.QMessageBox.information(
-                self,
-                "Import",
-                "Sélectionne au moins une ligne du tableau."
+                self, "Import", "Sélectionne au moins une ligne du tableau."
             )
             return
-
-        types = {row["type"] for row in selected_rows}
+        types = {r["type"] for r in selected}
         if len(types) > 1:
             QtWidgets.QMessageBox.warning(
-                self,
-                "Import multiple impossible",
-                "La sélection multiple doit contenir un seul type de justificatif (CE, CECC ou DPE)."
+                self, "Import multiple impossible",
+                "La sélection multiple doit contenir un seul type de justificatif."
             )
             return
-
-        first_row = selected_rows[0]
-
-        dialog = UploadDocumentDialog(
+        first = selected[0]
+        dlg = UploadDocumentDialog(
             project_dir=self.project_dir,
-            supplier=first_row["supplier"],
-            reference=first_row["reference"],
-            preset_justification_type=first_row["type"],
-            batch_targets=[
-                {
-                    "supplier": row["supplier"],
-                    "reference": row["reference"],
-                    "type": row["type"],
-                }
-                for row in selected_rows
-            ],
+            supplier=first["supplier"],
+            reference=first["reference"],
+            preset_justification_type=first["type"],
+            batch_targets=[{"supplier": r["supplier"], "reference": r["reference"], "type": r["type"]}
+                           for r in selected],
             parent=self,
         )
+        dlg.documentSaved.connect(self._load_table)
+        dlg.exec()
 
-        dialog.documentSaved.connect(self._load_table)
-        dialog.exec()
+    def _open_project_settings(self):
+        fresh = self.project_manager.load_project(self.project_dir)
+        if not fresh:
+            QtWidgets.QMessageBox.warning(self, "Paramétrage", "Impossible de relire le projet.")
+            return
+        dlg = NewProjectDialog(self, project_data=fresh)
+        if dlg.exec() != QtWidgets.QDialog.Accepted:
+            return
+        updated = dlg.updated_project_data
+        if not updated:
+            return
+        self.project_data = updated
+        self.enabled_bdds = list(self.project_data.get("enabled_bdds", JUSTIFICATION_TYPES))
+        self._refresh_project_data()
+        self._load_table()
+        QtWidgets.QMessageBox.information(self, "Paramétrage", "Projet mis à jour.")
+
+    def _export_templates(self):
+        try:
+            paths = export_project_templates(self.project_dir)
+            QtWidgets.QMessageBox.information(
+                self, "Export terminé",
+                "Fichiers exportés :\n\n" + "\n".join(str(p) for p in paths),
+            )
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Erreur export", str(e))
+
+    def _on_modify_row(self, row_data: dict):
+        self._open_upload_from_selection()
+
+    def _on_delete_row(self, row_data: dict):
+        sup = row_data.get("supplier", "")
+        ref = row_data.get("reference", "")
+        ans = QtWidgets.QMessageBox.question(
+            self,
+            "Supprimer la référence",
+            f"Supprimer tous les documents de {sup} / {ref} ?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if ans == QtWidgets.QMessageBox.Yes:
+            from .metadata_db import delete_uploaded_documents_for_rows
+            delete_uploaded_documents_for_rows(self.project_dir, [row_data])
+            self._load_table()
+
+    def _open_file(self, file_path: str):
+        path = Path(file_path)
+        if not path.exists():
+            QtWidgets.QMessageBox.warning(
+                self, "Fichier introuvable", f"Impossible d'ouvrir :\n\n{path}"
+            )
+            return
+        try:
+            if sys.platform.startswith("win"):
+                os.startfile(str(path))
+            elif sys.platform == "darwin":
+                subprocess.run(["open", str(path)], check=False)
+            else:
+                subprocess.run(["xdg-open", str(path)], check=False)
+        except Exception as e:
+            QtWidgets.QMessageBox.critical(self, "Erreur d'ouverture", str(e))

@@ -575,7 +575,9 @@ class NewProjectDialog(QtWidgets.QDialog):
         tab_bar_lay.setSpacing(0)
 
         self._tab_manual_btn = QtWidgets.QPushButton("Saisie manuelle", tab_bar_widget)
+        self._tab_manual_btn.setFixedSize(160, 32)
         self._tab_bulk_btn   = QtWidgets.QPushButton("Import en masse", tab_bar_widget)
+        self._tab_bulk_btn.setFixedSize(160, 32)
 
         for btn in (self._tab_manual_btn, self._tab_bulk_btn):
             btn.setCheckable(True)
