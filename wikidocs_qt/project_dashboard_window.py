@@ -236,7 +236,8 @@ class DetailPanel(QtWidgets.QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(340)
+        self.setMinimumWidth(360)
+        self.resize(500, self.height())
         self.setStyleSheet(f"""
             DetailPanel {{
                 background:{WHITE};
@@ -294,7 +295,7 @@ class DetailPanel(QtWidgets.QFrame):
         self._body.addWidget(self._lbl_docs_title)
 
         self._tbl_docs = self._make_doc_table()
-        self._body.addWidget(self._tbl_docs)
+        self._body.addWidget(self._tbl_docs, 1)
 
         self._body.addWidget(_hline())
 
@@ -307,7 +308,6 @@ class DetailPanel(QtWidgets.QFrame):
         self._info_lay.setContentsMargins(0, 0, 0, 0)
         self._info_lay.setSpacing(4)
         self._body.addWidget(self._info_widget)
-        self._body.addStretch(1)
 
         # Footer buttons
         root.addWidget(_hline())
@@ -362,6 +362,17 @@ class DetailPanel(QtWidgets.QFrame):
         footer_lay.addWidget(self._btn_delete)
         root.addWidget(footer)
 
+    def _reset_doc_table(self):
+        rows = self._tbl_docs.rowCount()
+        cols = self._tbl_docs.columnCount()
+
+        for r in range(rows):
+            for c in range(cols):
+                self._tbl_docs.removeCellWidget(r, c)
+
+        self._tbl_docs.clearContents()
+        self._tbl_docs.setRowCount(0)
+
     def _make_doc_table(self) -> QtWidgets.QTableWidget:
         t = QtWidgets.QTableWidget(0, 3)
         t.setHorizontalHeaderLabels(["Exigence", "Applicabilité", "Nom du document"])
@@ -374,7 +385,11 @@ class DetailPanel(QtWidgets.QFrame):
         t.setAlternatingRowColors(True)
         t.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
         t.setSelectionMode(QtWidgets.QTableWidget.NoSelection)
-        t.setMaximumHeight(240)
+        t.setSizePolicy(
+            QtWidgets.QSizePolicy.Expanding,
+            QtWidgets.QSizePolicy.Expanding
+        )
+        t.setMinimumHeight(300)
         t.setStyleSheet(f"""
             QTableWidget {{
                 border:1px solid {GRAY_BORDER}; border-radius:8px;
@@ -426,6 +441,7 @@ class DetailPanel(QtWidgets.QFrame):
         )
 
         # Documents liés table
+        self._reset_doc_table()
         is_cecc = (jtype == "CECC")
         if is_cecc:
             self._tbl_docs.setColumnCount(2)
@@ -447,20 +463,25 @@ class DetailPanel(QtWidgets.QFrame):
             self._tbl_docs.setItem(i, 0, req_item)
 
             if not is_cecc:
-                app_item = QtWidgets.QTableWidgetItem(applicability)
-                app_item.setTextAlignment(Qt.AlignCenter)
-                if applicability == "Non applicable":
-                    app_item.setForeground(QColor(ORANGE_WARN))
+                app_label = QtWidgets.QLabel(applicability)
+                app_label.setAlignment(Qt.AlignCenter)
+                app_label.setStyleSheet("background:transparent; font-weight:700;")
+
+                if applicability == "Applicable":
+                    app_label.setStyleSheet(f"color:{GREEN_OK}; background:transparent; font-weight:700;")
+                elif applicability == "Non applicable":
+                    app_label.setStyleSheet(f"color:{GRAY_TEXT}; background:transparent; font-weight:700;")
                 else:
-                    app_item.setForeground(QColor(GREEN_OK))
-                self._tbl_docs.setItem(i, 1, app_item)
+                    app_label.setStyleSheet(f"color:{RED_KO}; background:transparent; font-weight:700;")
+
+                self._tbl_docs.setCellWidget(i, 1, app_label)
                 doc_col = 2
             else:
                 doc_col = 1
 
-            filename = str(detail.get("filename", "—"))
+            filename = str(detail.get("filename", "") or "")
             file_item = QtWidgets.QTableWidgetItem(filename)
-            if filename not in ("—", "N/A", ""):
+            if filename:
                 file_item.setForeground(QColor(BLUE))
                 font = file_item.font()
                 font.setUnderline(True)
@@ -545,7 +566,7 @@ class MainTab(QtWidgets.QWidget):
     COLUMNS = [
         "Fournisseur", "Référence", "Libellé équipement",
         "MNP", "N° de commande", "Type",
-        "Nb docs", "Complétude",
+         "Complétude",
     ]
 
     rowSelected = QtCore.Signal(dict)  # emits row_data
@@ -563,14 +584,13 @@ class MainTab(QtWidgets.QWidget):
         self.table.setHorizontalHeaderLabels(self.COLUMNS)
         hh = self.table.horizontalHeader()
         hh.setFont(F_BOLD)
-        hh.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
-        hh.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
-        hh.setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
-        hh.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)
-        hh.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)
-        hh.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)
-        hh.setSectionResizeMode(6, QtWidgets.QHeaderView.ResizeToContents)
-        hh.setSectionResizeMode(7, QtWidgets.QHeaderView.ResizeToContents)
+        hh.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)  # Fournisseur
+        hh.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)  # Référence
+        hh.setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)           # Libellé équipement
+        hh.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)  # MNP
+        hh.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)  # N° commande
+        hh.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)  # Type
+        hh.setSectionResizeMode(6, QtWidgets.QHeaderView.ResizeToContents)  # Complétude
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
@@ -621,34 +641,32 @@ class MainTab(QtWidgets.QWidget):
                 c_color = RED_KO
 
             values = [
-                (row.get("supplier", ""),       Qt.AlignLeft  | Qt.AlignVCenter),
-                (row.get("reference", ""),       Qt.AlignLeft  | Qt.AlignVCenter),
-                (row.get("label", ""),           Qt.AlignLeft  | Qt.AlignVCenter),
-                (str(row.get("documents_db", row.get("documents", 0))),
-                                                 Qt.AlignCenter),
-                (row.get("order_number", ""),    Qt.AlignCenter),
-                (row.get("type", ""),            Qt.AlignCenter),
-                (str(row.get("documents", 0)),   Qt.AlignCenter),
-                (row.get("completion", "—"),     Qt.AlignCenter),
-            ]
+    (row.get("supplier", ""),       Qt.AlignLeft  | Qt.AlignVCenter),
+    (row.get("reference", ""),      Qt.AlignLeft  | Qt.AlignVCenter),
+    (row.get("label", ""),          Qt.AlignLeft  | Qt.AlignVCenter),
+    (str(row.get("documents_db", row.get("documents", 0))), Qt.AlignCenter),
+    (row.get("order_number", ""),   Qt.AlignCenter),
+    (row.get("type", ""),           Qt.AlignCenter),
+    (row.get("completion", "—"),    Qt.AlignCenter),
+]
 
             for ci, (val, align) in enumerate(values):
                 item = QtWidgets.QTableWidgetItem(str(val))
                 item.setTextAlignment(align)
                 item.setData(Qt.UserRole, row)
-                if ci == 7:  # Complétude column
+                if ci == 6:  # Complétude column
                     item.setForeground(QtGui.QBrush(QColor(c_color)))
                     font = item.font()
                     font.setBold(True)
                     item.setFont(font)
                 self.table.setItem(ri, ci, item)
 
-        self.table.resizeRowsToContents()
+        self.table.verticalHeader().setDefaultSectionSize(34)
         self.table.setSortingEnabled(True)
-        self.table.sortByColumn(0, Qt.AscendingOrder)
+        #self.table.sortByColumn(0, Qt.AscendingOrder)
 
-        if self.table.rowCount() > 0:
-            self.table.selectRow(0)
+        #if self.table.rowCount() > 0:
+        #    self.table.selectRow(0)
 
     def selected_rows_data(self) -> list[dict]:
         rows = []
@@ -851,23 +869,35 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             "🌿", "DPE", "0 %", "Complétude",
             bar_color=KPI_BAR_COLORS["DPE"], icon_bg="#D1FAE5"
         )
-        self.kpi_refs = KpiCard(
-            "📄", "Références", "0", "Total", icon_bg="#DBEAFE"
-        )
-        self.kpi_docs = KpiCard(
-            "📋", "Documents", "0", "Total", icon_bg="#D1FAE5"
-        )
-        for card in (self.kpi_ce, self.kpi_cecc, self.kpi_dpe, self.kpi_refs, self.kpi_docs):
+        for card in (self.kpi_ce, self.kpi_cecc, self.kpi_dpe):
             h.addWidget(card, 1)
+
+        h.addStretch(2)
         return row
 
     # ── Table section (tabs + detail panel) ───────────────────────────────────
     def _build_table_section(self) -> QtWidgets.QWidget:
         outer = QtWidgets.QWidget()
         outer.setStyleSheet("background:transparent;")
-        h = QtWidgets.QHBoxLayout(outer)
-        h.setContentsMargins(0, 0, 0, 0)
-        h.setSpacing(8)
+
+        layout = QtWidgets.QHBoxLayout(outer)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        splitter = QtWidgets.QSplitter(Qt.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(6)
+        splitter.setStyleSheet(f"""
+            QSplitter::handle {{
+                background:{GRAY_BORDER};
+                border-radius:3px;
+            }}
+            QSplitter::handle:hover {{
+                background:{BLUE};
+            }}
+        """)
+
+        layout.addWidget(splitter, 1)
 
         # Left: filter bar + tabs
         left = QtWidgets.QFrame()
@@ -878,6 +908,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
                 border-radius:12px;
             }}
         """)
+
         lv = QtWidgets.QVBoxLayout(left)
         lv.setContentsMargins(0, 0, 0, 0)
         lv.setSpacing(0)
@@ -885,7 +916,8 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         lv.addWidget(_hline())
         lv.addWidget(self._build_tabs(), 1)
         lv.addWidget(self._build_statusbar())
-        h.addWidget(left, 1)
+
+        splitter.addWidget(left)
 
         # Right: detail panel
         self.detail_panel = DetailPanel()
@@ -893,7 +925,13 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self.detail_panel.requestModify.connect(self._on_modify_row)
         self.detail_panel.requestDelete.connect(self._on_delete_row)
         self.detail_panel.requestOpenDoc.connect(self._open_file)
-        h.addWidget(self.detail_panel)
+
+        splitter.addWidget(self.detail_panel)
+
+        splitter.setStretchFactor(0, 4)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([1000, 340])
+
         return outer
 
     # ── Filter row ────────────────────────────────────────────────────────────
@@ -1007,6 +1045,10 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self.project_data = self.project_manager.load_project(self.project_dir) or self.project_data
         self.enabled_bdds = list(self.project_data.get("enabled_bdds", JUSTIFICATION_TYPES))
 
+    def _is_rohs_code(self, code: str) -> bool:
+        code = self._normalize_requirement_code(code).lower()
+        return "2011/65/ue" in code or "rohs" in code
+
     def _normalize_requirement_code(self, code: str) -> str:
         code = str(code or "").strip()
         for sep in (" — ", " | "):
@@ -1028,7 +1070,18 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         justif_type = str(justif_type).upper()
         source_type = str(doc.get("source_justification_type", "")).upper()
         stored_bdds = [str(v).upper() for v in (doc.get("stored_in_bdds") or [])]
-        return source_type == justif_type or justif_type in stored_bdds
+
+        if source_type == justif_type or justif_type in stored_bdds:
+            return True
+
+        # Cas particulier : RoHS est commun CE / DPE
+        req_codes = doc.get("requirement_codes") or []
+        has_rohs = any(self._is_rohs_code(c) for c in req_codes)
+
+        if has_rohs and justif_type in ("CE", "DPE") and source_type in ("CE", "DPE"):
+            return True
+
+        return False
 
     def _count_documents_in_folder(self, supplier: str, reference: str, justif_type: str) -> int:
         dossier_number = self.project_data.get("dossier_number", "")
@@ -1195,14 +1248,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self.kpi_cecc.set_value(f"{cecc_pct} %", cecc_pct)
         self.kpi_dpe.set_value(f"{dpe_pct} %",  dpe_pct)
 
-        total_refs   = len({(r["supplier"], r["reference"]) for r in rows})
-        refs_with_docs = len({
-            (r["supplier"], r["reference"])
-            for r in rows if r["documents"] > 0
-        })
-        self.kpi_refs.set_value(str(total_refs))
-        self.kpi_docs.set_value(str(refs_with_docs))
-
+        
     def _load_table(self, rebuild_cache: bool = True):
         if rebuild_cache:
             self._refresh_project_data()
@@ -1211,11 +1257,19 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self._filtered_rows_cache = self._apply_filters(self._all_rows_cache)
         self._update_kpis(self._filtered_rows_cache)
 
-        # Distribute rows to tabs
         rows_by_tab = {"Tous": list(self._filtered_rows_cache)}
         for bdd in self.enabled_bdds:
             rows_by_tab[bdd] = [r for r in self._filtered_rows_cache if r["type"] == bdd]
         self.current_rows_by_tab = rows_by_tab
+
+        self.setUpdatesEnabled(False)
+        try:
+            for name, tab in self.tab_widgets_by_name.items():
+                rows = self.current_rows_by_tab.get(name, [])
+                tab.load_rows(rows)
+                tab._already_loaded = True
+        finally:
+            self.setUpdatesEnabled(True)
 
         self._load_current_tab()
         self._update_filter_chips()
@@ -1225,11 +1279,12 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
 
     def _load_current_tab(self):
         name = self.tabs.tabText(self.tabs.currentIndex())
-        tab  = self.tab_widgets_by_name.get(name)
+        tab = self.tab_widgets_by_name.get(name)
         if not tab:
             return
+
         rows = self.current_rows_by_tab.get(name, [])
-        tab.load_rows(rows)
+
         self.lbl_row_count.setText(f"{len(rows)} lignes")
         self.detail_panel.clear()
 
@@ -1268,8 +1323,12 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             label = (data["label"] if data and data.get("label") else default_label)
             detail_rows.append({
                 "requirement": f"{code} | {label}",
-                "applicability": "Non applicable" if is_na else "Applicable",
-                "filename": "N/A" if is_na else (data["filename"] if data else "—"),
+                "applicability": (
+    "Non applicable" if is_na
+    else "Applicable" if data
+    else "Non défini"
+),
+                "filename": "" if is_na else (data["filename"] if data else ""),
                 "path":    "" if is_na else (data["path"] if data else ""),
             })
         return detail_rows
@@ -1301,7 +1360,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             val = str(fields.get(key, "") or "").strip()
             rows.append({
                 "requirement": label,
-                "filename":    val or "—",
+                "filename":    val,
                 "path":        path if key == "nom_cecc" else "",
             })
         return rows
@@ -1351,8 +1410,15 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
                            for r in selected],
             parent=self,
         )
-        dlg.documentSaved.connect(self._load_table)
+        dlg.documentSaved.connect(self._reload_after_import)
         dlg.exec()
+
+    def _reload_after_import(self):
+        QtWidgets.QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self._load_table(rebuild_cache=True)
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
 
     def _open_project_settings(self):
         fresh = self.project_manager.load_project(self.project_dir)

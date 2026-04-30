@@ -721,57 +721,6 @@ class CEPage(QtWidgets.QWidget):
         lay = QtWidgets.QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
-
-        # ── Section header ──
-        hdr = QtWidgets.QWidget(self)
-        hdr.setStyleSheet("background:#ffffff;")
-        hdr_lay = QtWidgets.QVBoxLayout(hdr)
-        hdr_lay.setContentsMargins(20, 16, 20, 10)
-        hdr_lay.setSpacing(3)
-
-        title = QtWidgets.QLabel("Exigences CE", hdr)
-        title.setObjectName("sectionTitle")
-        sub = QtWidgets.QLabel(
-            'Sélectionnez les exigences couvertes par ce justificatif. '
-            'Indiquez "Non applicable" pour celles qui ne concernent pas cette référence.',
-            hdr
-        )
-        sub.setObjectName("hintLabel")
-        sub.setWordWrap(True)
-        hdr_lay.addWidget(title)
-        hdr_lay.addWidget(sub)
-        lay.addWidget(hdr)
-
-        # ── Search + action buttons ──
-        toolbar = QtWidgets.QWidget(self)
-        toolbar.setStyleSheet("background:#ffffff;")
-        tb_lay = QtWidgets.QHBoxLayout(toolbar)
-        tb_lay.setContentsMargins(20, 0, 16, 10)
-        tb_lay.setSpacing(10)
-
-        self._search = QtWidgets.QLineEdit(toolbar)
-        self._search.setObjectName("searchBox")
-        self._search.setPlaceholderText("Rechercher une exigence…")
-        self._search.setFixedWidth(220)
-        self._search.textChanged.connect(self._filter)
-
-        self._sel_all_btn = QtWidgets.QPushButton("Tout sélectionner", toolbar)
-        self._sel_all_btn.setObjectName("ghostSmallButton")
-        self._sel_all_btn.clicked.connect(self._select_all)
-
-        self._desel_all_btn = QtWidgets.QPushButton("Tout désélectionner", toolbar)
-        self._desel_all_btn.setObjectName("ghostSmallButton")
-        self._desel_all_btn.clicked.connect(self._deselect_all)
-
-        info = _info_btn(toolbar)
-
-        tb_lay.addWidget(self._search)
-        tb_lay.addStretch(1)
-        tb_lay.addWidget(self._sel_all_btn)
-        tb_lay.addWidget(self._desel_all_btn)
-        tb_lay.addWidget(info)
-        lay.addWidget(toolbar)
-
         # ── Table header ──
         tbl_hdr = QtWidgets.QFrame(self)
         tbl_hdr.setObjectName("reqTableHeader")
@@ -783,11 +732,10 @@ class CEPage(QtWidgets.QWidget):
         _exig.setObjectName("reqHeaderLabel")
         _appl_row = QtWidgets.QHBoxLayout()
         _appl_row.setSpacing(4)
-        _appl = QtWidgets.QLabel("Applicable", tbl_hdr)
+        _appl = QtWidgets.QLabel("Applicabilité", tbl_hdr)
         _appl.setObjectName("reqHeaderLabel")
-        _appl_info = _info_btn(tbl_hdr)
+
         _appl_row.addWidget(_appl)
-        _appl_row.addWidget(_appl_info)
         th_lay.addWidget(_exig, 1)
         th_lay.addLayout(_appl_row)
         lay.addWidget(tbl_hdr)
@@ -909,55 +857,6 @@ class DPEPage(QtWidgets.QWidget):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
 
-        # ── Section header ──
-        hdr = QtWidgets.QWidget(self)
-        hdr.setStyleSheet("background:#ffffff;")
-        hdr_lay = QtWidgets.QVBoxLayout(hdr)
-        hdr_lay.setContentsMargins(20, 16, 20, 10)
-        hdr_lay.setSpacing(3)
-        title = QtWidgets.QLabel("Exigences DPE", hdr)
-        title.setObjectName("sectionTitle")
-        sub = QtWidgets.QLabel(
-            'Sélectionnez les exigences couvertes par ce justificatif. '
-            'Indiquez "Non applicable" pour celles qui ne concernent pas cette référence.',
-            hdr
-        )
-        sub.setObjectName("hintLabel")
-        sub.setWordWrap(True)
-        hdr_lay.addWidget(title)
-        hdr_lay.addWidget(sub)
-        lay.addWidget(hdr)
-
-        # ── Search + buttons ──
-        toolbar = QtWidgets.QWidget(self)
-        toolbar.setStyleSheet("background:#ffffff;")
-        tb_lay = QtWidgets.QHBoxLayout(toolbar)
-        tb_lay.setContentsMargins(20, 0, 16, 10)
-        tb_lay.setSpacing(10)
-
-        self._search = QtWidgets.QLineEdit(toolbar)
-        self._search.setObjectName("searchBox")
-        self._search.setPlaceholderText("Rechercher une exigence…")
-        self._search.setFixedWidth(220)
-        self._search.textChanged.connect(self._filter)
-
-        self._sel_all_btn = QtWidgets.QPushButton("Tout sélectionner", toolbar)
-        self._sel_all_btn.setObjectName("ghostSmallButton")
-        self._sel_all_btn.clicked.connect(self._select_all)
-
-        self._desel_all_btn = QtWidgets.QPushButton("Tout désélectionner", toolbar)
-        self._desel_all_btn.setObjectName("ghostSmallButton")
-        self._desel_all_btn.clicked.connect(self._deselect_all)
-
-        info = _info_btn(toolbar)
-
-        tb_lay.addWidget(self._search)
-        tb_lay.addStretch(1)
-        tb_lay.addWidget(self._sel_all_btn)
-        tb_lay.addWidget(self._desel_all_btn)
-        tb_lay.addWidget(info)
-        lay.addWidget(toolbar)
-
         # ── Table header ──
         tbl_hdr = QtWidgets.QFrame(self)
         tbl_hdr.setObjectName("reqTableHeader")
@@ -971,9 +870,7 @@ class DPEPage(QtWidgets.QWidget):
         _appl_row.setSpacing(4)
         _appl = QtWidgets.QLabel("Applicable", tbl_hdr)
         _appl.setObjectName("reqHeaderLabel")
-        _appl_info = _info_btn(tbl_hdr)
         _appl_row.addWidget(_appl)
-        _appl_row.addWidget(_appl_info)
         th_lay.addWidget(_exig, 1)
         th_lay.addLayout(_appl_row)
         lay.addWidget(tbl_hdr)

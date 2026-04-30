@@ -471,11 +471,7 @@ class NewProjectDialog(QtWidgets.QDialog):
         emp_row.setSpacing(8)
         self.location_edit = QtWidgets.QLineEdit(card)
         self.location_edit.setPlaceholderText("Choisir l'emplacement racine")
-        self.browse_button = QtWidgets.QPushButton("Parcourir…", card)
-        self.browse_button.setObjectName("browseButton")
-        self.browse_button.clicked.connect(self._browse_location)
         emp_row.addWidget(self.location_edit, 1)
-        emp_row.addWidget(self.browse_button)
         emp_col.addLayout(emp_row)
         row1.addLayout(emp_col, 4)
 
@@ -1199,7 +1195,6 @@ class NewProjectDialog(QtWidgets.QDialog):
 
         self.project_name_edit.setReadOnly(True)
         self.location_edit.setReadOnly(True)
-        self.browse_button.setEnabled(False)
 
         enabled_bdds = set(self.project_data.get("enabled_bdds", []))
         self.ce_checkbox.setChecked("CE" in enabled_bdds)
