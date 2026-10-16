@@ -312,7 +312,11 @@ class FilterableHeader(QtWidgets.QHeaderView):
             sec_x = self.sectionViewportPosition(col)
             sec_w = self.sectionSize(col)
             rect  = QtCore.QRect(sec_x, 0, sec_w, self.height())
-            if self._icon_rect(rect).adjusted(-4, -4, 4, 4).contains(pos):
+            # Agrandit la zone de survol/clic pour le confort, mais SANS empiéter
+            # sur le bord droit de la section : cette bande reste réservée à la
+            # poignée native de redimensionnement (sinon l'icône de filtre la
+            # recouvre et le redimensionnement de la colonne devient erratique).
+            if self._icon_rect(rect).adjusted(-4, -4, 0, 4).contains(pos):
                 return col
         return -1
 
@@ -325,17 +329,27 @@ class FilterableHeader(QtWidgets.QHeaderView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        # Laisse d'abord QHeaderView gérer son curseur natif (redimensionnement
+        # au survol d'un bord de colonne) avant d'imposer le curseur « main »
+        # sur l'icône de filtre : sinon ce dernier écrase en permanence le
+        # curseur de redimensionnement et celui-ci n'apparaît jamais.
+        super().mouseMoveEvent(event)
+
         col = self._icon_col_at(event.pos())
         if col != self._hovered_col:
             self._hovered_col = col
             self.viewport().update()
-        self.setCursor(Qt.PointingHandCursor if col != -1 else Qt.ArrowCursor)
-        super().mouseMoveEvent(event)
+
+        if col != -1:
+            self.setCursor(Qt.PointingHandCursor)
+        else:
+            self.unsetCursor()
 
     def leaveEvent(self, event):
         if self._hovered_col != -1:
             self._hovered_col = -1
             self.viewport().update()
+        self.unsetCursor()
         super().leaveEvent(event)
 
 # ── Detail panel ──────────────────────────────────────────────────────────────
@@ -747,11 +761,13 @@ class MainTab(QtWidgets.QWidget):
             }}
             QTableWidget::item {{
                 padding:6px 8px; color:{DARK};
-                border-right:1px solid #EAECF0;
+                border-right:1px solid {GRAY_BORDER};
+                border-bottom:1px solid {GRAY_BORDER};
             }}
             QTableWidget::item:selected {{
                 background:{SEL_BG}; color:{BLUE};
                 border-right:1px solid #BFDBFE;
+                border-bottom:1px solid #BFDBFE;
             }}
         """)
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
