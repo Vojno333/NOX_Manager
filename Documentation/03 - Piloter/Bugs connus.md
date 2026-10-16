@@ -1,6 +1,6 @@
 ---
 tags: [nox, bugs]
-maj: 2026-09-21
+maj: 2026-10-16
 ---
 
 ↑ [[00 - Index]]
@@ -14,7 +14,6 @@ Défauts relevés par **lecture du code** le 2026-09-21. Aucun n'a été reprodu
 | [[#BUG-001]] | Haute   | Clés CECC incohérentes entre import, dashboard et export                      | Haute      |
 | [[#BUG-002]] | Haute   | N/A interprété différemment par l'export et le dashboard                      | Haute      |
 | [[#BUG-003]] | Moyenne | Statuts CECC proposés ≠ statuts comptés                                       | Haute      |
-| [[#BUG-004]] | Moyenne | Export : liste des références différente de celle du dashboard                | Moyenne    |
 | [[#BUG-005]] | Moyenne | Suppression de référence : base vidée, fichiers conservés et toujours comptés | Haute      |
 | [[#BUG-006]] | Basse   | Colonne MPN écrite deux fois dans l'export CECC                               | À vérifier |
 
@@ -44,9 +43,6 @@ Scénario : une exigence est marquée N/A, puis repassée « Applicable » avec 
 
 ## BUG-003
 **Statuts CECC.** L'import propose « A demander, Demandé, Relancé, Non conforme, Validé » ; les calculs ne connaissent que « Validé, Relancé, Non conforme, Estimation » (`CECC_STATUSES`). « A demander » et « Demandé » sont ignorés au dénominateur, et « Estimation » ne peut pas être saisi. À trancher avec le métier : quelle est la liste officielle ? (NOX-011 dans [[Backlog]]).
-
-## BUG-004
-**Liste des références.** Le dashboard part de `project.json` (`rows`) et ne scanne les dossiers qu'en repli. L'export ne scanne que les dossiers `Documents/` et **s'arrête à la première BDD qui contient des références** (`break`). Une référence dont le dossier a été supprimé ou renommé manuellement disparaît de l'export mais pas du dashboard, et inversement.
 
 ## BUG-005
 **Suppression d'une référence.** `_on_delete_row` (dashboard) supprime les lignes SQLite mais pas les fichiers, alors que la boîte de dialogue dit « Supprimer tous les documents de … ». Le compteur « Documents » continue de compter les fichiers présents sur disque. Décider : soit supprimer aussi les fichiers (avec confirmation explicite), soit changer le libellé.

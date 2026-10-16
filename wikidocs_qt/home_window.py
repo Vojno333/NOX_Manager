@@ -508,7 +508,7 @@ class HomeWindow(QtWidgets.QMainWindow):
         self.recent_list = QtWidgets.QTreeWidget(frame)
         self.recent_list.setObjectName("projectTree")
         self.recent_list.setColumnCount(4)
-        self.recent_list.setHeaderLabels(["Numéro de l'affaire", "Emplacement", "Dernière ouverture", ""])
+        self.recent_list.setHeaderLabels(["Numéro de dossier", "Emplacement", "Dernière ouverture", ""])
         self.recent_list.setRootIsDecorated(False)
         self.recent_list.setAlternatingRowColors(True)
         self.recent_list.setSelectionMode(QtWidgets.QAbstractItemView.SingleSelection)
@@ -676,14 +676,12 @@ class HomeWindow(QtWidgets.QMainWindow):
         projects = self.project_manager.get_recent_projects()
 
         for project in projects:
-            name        = project.get("name", "Projet sans nom")
-            path        = project.get("path", "")
-            last_opened = self._format_datetime(project.get("last_opened", ""))
+            name           = project.get("name", "Projet sans nom")
+            dossier_number = project.get("dossier_number") or name
+            path           = project.get("path", "")
+            last_opened    = self._format_datetime(project.get("last_opened", ""))
 
-            item = QtWidgets.QTreeWidgetItem(["", name, path, last_opened, ""])
-            # col 0: folder icon (drawn via QLabel delegate trick → use col 1 for name)
-            # Simpler: put icon directly on col 1 text
-            item = QtWidgets.QTreeWidgetItem([name, path, last_opened, "⋮"])
+            item = QtWidgets.QTreeWidgetItem([dossier_number, path, last_opened, "⋮"])
             item.setData(0, QtCore.Qt.UserRole, path)
             item.setData(0, QtCore.Qt.UserRole + 1, project)  # full project data
 
@@ -708,9 +706,11 @@ class HomeWindow(QtWidgets.QMainWindow):
         text = text.lower()
         for i in range(self.recent_list.topLevelItemCount()):
             item = self.recent_list.topLevelItem(i)
+            project = item.data(0, QtCore.Qt.UserRole + 1) or {}
             visible = (
                 text in item.text(0).lower()
                 or text in item.text(1).lower()
+                or text in str(project.get("name", "")).lower()
             )
             item.setHidden(not visible)
 
@@ -937,12 +937,13 @@ class HomeWindow(QtWidgets.QMainWindow):
         try:
             project_path = Path(project_data["project_path"])
             project_name = project_data.get("project_name", project_path.name)
+            dossier_number = project_data.get("dossier_number", "")
 
-            self.project_manager.add_recent_project(project_name, project_path)
+            self.project_manager.add_recent_project(project_name, project_path, dossier_number)
             self.project_manager.add_recent_location(project_path.parent)
 
             window = ProjectDashboardWindow(project_data=project_data)
-            window.setWindowTitle(f"NOX_Manager — {project_name}")
+            window.setWindowTitle(f"NOX_Manager — {dossier_number or project_name}")
             window.showMaximized()
 
             self.project_windows.append(window)

@@ -1,6 +1,6 @@
 ---
 tags: [nox, flux]
-maj: 2026-09-21
+maj: 2026-10-16
 ---
 
 ↑ [[00 - Index]] · Vocabulaire : [[Glossaire]]
@@ -53,7 +53,7 @@ Bouton « Gérer l'applicabilité » → même dialogue en `mode="applicability"
 Bouton d'export → `export_project_templates(project_dir)`.
 
 1. Lecture de `project.json`, regroupement des documents par (fournisseur, référence, BDD) (`_group_docs`).
-2. Liste des couples par **scan des dossiers** (`_scan_supplier_reference_pairs`).
+2. Liste des couples (fournisseur, référence) à partir de **`project.json` → `rows`** (même source que le dashboard) ; repli sur un **scan des dossiers** seulement si `rows` est vide (`_scan_supplier_reference_pairs`). Le libellé, le MNP et le n° de commande de chaque ligne sont relus depuis `rows` pour remplir les colonnes C/D/F des templates (`_rows_lookup`).
 3. Pour chaque BDD activée : chargement du template, en-tête projet, remplissage, redimensionnement du tableau et du pied (`_resize_table_area`), extension de la mise en forme conditionnelle, écriture de `BDD <type> <n°>/BDD_<type>_<n°>.xlsx`.
 4. Message listant les fichiers, ou message d'erreur (`FileNotFoundError` si un template manque).
 

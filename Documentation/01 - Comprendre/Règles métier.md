@@ -1,6 +1,6 @@
 ---
 tags: [nox, metier]
-maj: 2026-09-21
+maj: 2026-10-16
 ---
 
 ↑ [[00 - Index]] · Vocabulaire : [[Glossaire]]
@@ -102,4 +102,4 @@ La directive `2011/65/UE` figure en CE **et** en DPE. Quand un document CE (ou D
 - Ligne de données à partir de la ligne 5 ; pied de tableau aux lignes 235/236 du template, déplacé selon le nombre de références.
 - Une cellule d'exigence contient : « N/A » si N/A, sinon un **lien hypertexte** vers le document le plus récent couvrant l'exigence (texte = nom du fichier), sinon vide.
 - Pied de tableau : formules `AVERAGE` / `COUNTA` / `COUNTIF` (« prouvé » vs « estimé »). Ne pas les remplacer par des valeurs calculées en Python.
-- Les couples (fournisseur, référence) exportés viennent du **scan des dossiers** `Documents/`, pas de `project.json` : voir [[Bugs connus#BUG-004]].
+- Les couples (fournisseur, référence) exportés, ainsi que leur libellé/MNP/n° de commande, viennent de `project.json` → `rows` (même source que le dashboard) ; le scan des dossiers `Documents/` n'est qu'un repli pour les projets sans `rows`. Voir [[Flux fonctionnels#6. Export]].

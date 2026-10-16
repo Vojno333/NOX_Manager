@@ -852,7 +852,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
 
         init_metadata_db(self.project_dir)
         self.setWindowTitle(
-            f"NOX_Manager — {project_data.get('project_name', self.project_dir.name)}"
+            f"NOX_Manager — {project_data.get('dossier_number') or project_data.get('project_name', self.project_dir.name)}"
         )
         fit_and_center(self, 1400, 860, min_w=1000, min_h=620)
 
@@ -916,7 +916,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         h.addStretch(1)
 
         project_badge = QtWidgets.QLabel(
-            self.project_data.get("project_name", self.project_dir.name)
+            self.project_data.get("dossier_number") or self.project_data.get("project_name", self.project_dir.name)
         )
         project_badge.setFont(F_BOLD)
         project_badge.setStyleSheet("""

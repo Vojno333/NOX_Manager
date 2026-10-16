@@ -1,6 +1,6 @@
 ---
 tags: [nox, backlog]
-maj: 2026-09-21
+maj: 2026-10-16
 ---
 
 ↑ [[00 - Index]]
@@ -25,7 +25,6 @@ Statuts : `À faire` · `En cours` · `Fait` · `Abandonné`.
 | NOX-010 | P0 | Unifier les clés de `cecc_fields` (import ↔ dashboard ↔ export) autour de `CECC_FREE_FIELDS`, avec lecture rétro-compatible des anciennes clés | [[Bugs connus#BUG-001]] | À faire |
 | NOX-012 | P0 | Aligner la résolution du N/A de l'export sur celle du dashboard (dernier événement gagnant) | [[Bugs connus#BUG-002]] | À faire |
 | NOX-011 | P1 | Définir la liste officielle des statuts CECC (avec le métier) et l'utiliser partout | [[Bugs connus#BUG-003]] | À faire |
-| NOX-013 | P1 | Faire partir l'export de la même liste de références que le dashboard (`project.json`) | [[Bugs connus#BUG-004]] | À faire |
 | NOX-014 | P1 | Suppression d'une référence : supprimer aussi les fichiers (avec confirmation) ou corriger le libellé | [[Bugs connus#BUG-005]] | À faire |
 | NOX-015 | P2 | Vérifier le double export du MPN (colonnes D et H du template CECC) | [[Bugs connus#BUG-006]] | À faire |
 
@@ -66,4 +65,6 @@ Statuts : `À faire` · `En cours` · `Fait` · `Abandonné`.
 
 ## Fait
 
-_(vide pour l'instant)_
+| ID | Prio | Tâche | Source | Statut |
+|---|---|---|---|---|
+| NOX-013 | P1 | Faire partir l'export de la même liste de références que le dashboard (`project.json`) | [[Journal de dev#2026-10-16 : alignement export ↔ interface]] | Fait le 2026-10-16 |

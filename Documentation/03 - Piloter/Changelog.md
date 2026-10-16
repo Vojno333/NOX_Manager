@@ -1,6 +1,6 @@
 ---
 tags: [nox, changelog]
-maj: 2026-09-21
+maj: 2026-10-16
 ---
 
 ↑ [[00 - Index]]
@@ -24,9 +24,12 @@ Numérotation proposée : `MAJEUR.MINEUR.CORRECTIF` (ex. 1.1.0). Il n'existe pas
 - Splash `flash.png` allégé (1,43 Mo → 58 Ko).
 - `AUTRES` retiré de la liste des exigences CE.
 - Accueil, dashboard et dialogues de projet/import retouchés (à détailler par l'auteur).
+- Création de projet : `.nox` et les dossiers `BDD CE/CECC/DPE …` sont créés directement dans l'emplacement choisi, sans dossier intermédiaire nommé d'après le numéro de l'affaire.
+- Accueil (liste des projets récents) et dashboard (titre de fenêtre, badge) affichent le **numéro de dossier** au lieu du numéro de l'affaire.
 
 ### Corrigé
-- _(rien de consigné)_
+- Import en masse : une ligne vide dans une des 5 colonnes (fournisseur/référence/libellé/MNP/n° commande) décalait les lignes suivantes de cette colonne vers le haut, désalignant les dossiers importés. Les lignes vides restent maintenant à leur position ; seules les lignes totalement vides sont ignorées, une fois l'alignement garanti.
+- Export Excel : les colonnes Libellé, MPN et N° de commande n'étaient jamais renseignées. L'export utilise désormais les mêmes données que le dashboard (`project.json` → `rows`) pour déterminer la liste des références et leurs informations, au lieu d'un scan des dossiers sur disque qui pouvait diverger de l'interface (références manquantes, textes désalignés par la normalisation des noms de dossiers).
 
 ## [v1.0] : 2026-04-28 → 2026-04-30
 

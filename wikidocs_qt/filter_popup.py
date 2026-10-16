@@ -33,6 +33,7 @@ class FilterPopup(QtWidgets.QDialog):
         layout.addLayout(top_buttons)
 
         self.list_widget = QtWidgets.QListWidget(self)
+        self.list_widget.itemChanged.connect(self._on_item_changed)
         layout.addWidget(self.list_widget, 1)
 
         buttons = QtWidgets.QHBoxLayout()
@@ -56,16 +57,34 @@ class FilterPopup(QtWidgets.QDialog):
         return [v for v in self.all_values if text in v.lower()]
 
     def _refresh_list(self):
-        current_checks = self.get_checked_values()
+        text = self.search_edit.text().strip()
+        filtered = self._filtered_values()
+
+        if text:
+            # Comportement Excel : taper du texte sélectionne automatiquement
+            # exactement les résultats trouvés (et seulement eux) — comme dans
+            # la liste déroulante de filtre d'Excel, la recherche remplace la
+            # sélection plutôt que de la préserver en arrière-plan.
+            self.checked_values = set(filtered)
+
+        self.list_widget.blockSignals(True)
         self.list_widget.clear()
 
-        for value in self._filtered_values():
+        for value in filtered:
             item = QtWidgets.QListWidgetItem(value)
             item.setFlags(item.flags() | QtCore.Qt.ItemIsUserCheckable)
             item.setCheckState(
-                QtCore.Qt.Checked if value in current_checks else QtCore.Qt.Unchecked
+                QtCore.Qt.Checked if value in self.checked_values else QtCore.Qt.Unchecked
             )
             self.list_widget.addItem(item)
+
+        self.list_widget.blockSignals(False)
+
+    def _on_item_changed(self, item: QtWidgets.QListWidgetItem):
+        if item.checkState() == QtCore.Qt.Checked:
+            self.checked_values.add(item.text())
+        else:
+            self.checked_values.discard(item.text())
 
     def _check_all_visible(self):
         for i in range(self.list_widget.count()):
@@ -76,15 +95,4 @@ class FilterPopup(QtWidgets.QDialog):
             self.list_widget.item(i).setCheckState(QtCore.Qt.Unchecked)
 
     def get_checked_values(self) -> set[str]:
-        checked = set(self.checked_values)
-
-        visible_values = {self.list_widget.item(i).text() for i in range(self.list_widget.count())}
-        checked -= visible_values
-
-        for i in range(self.list_widget.count()):
-            item = self.list_widget.item(i)
-            if item.checkState() == QtCore.Qt.Checked:
-                checked.add(item.text())
-
-        self.checked_values = checked
-        return checked
+        return set(self.checked_values)

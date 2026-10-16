@@ -1,6 +1,6 @@
 ---
 tags: [nox, dette]
-maj: 2026-09-21
+maj: 2026-10-16
 ---
 
 ↑ [[00 - Index]]
@@ -43,7 +43,7 @@ Constats de structure, sans bug immédiat. Les défauts fonctionnels sont dans [
 - `export_templates._get_not_applicable_map` (jamais appelée ; clé `not_applicable_requirements` inexistante dans le format).
 - `utils.py` : seule `human_size` est utilisée ; `search_rects_with_words` (attend un objet page PDF), `norm_text`, `norm_no_diacritics`, `norm_rel`, `fmt_dt` et l'import de `python-docx` ne servent à rien aujourd'hui, mais **imposent `python-docx` au démarrage** (`from docx import Document` au niveau module).
 - `CECC_STATUSES` importé dans `upload_document_dialog.py` sans être utilisé.
-- `_scan_supplier_reference_pairs` : deux implémentations divergentes (dashboard et export).
+- `_scan_supplier_reference_pairs` : deux implémentations (dashboard et export) qui font désormais la même chose (rows en priorité, scan des dossiers en repli — voir [[Journal de dev#2026-10-16 : alignement export ↔ interface]]) mais restent dupliquées plutôt que partagées.
 
 ## DT-006
 **Convention « estimation ».**

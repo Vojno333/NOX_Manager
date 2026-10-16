@@ -95,7 +95,7 @@ class ProjectManager:
             encoding="utf-8",
         )
 
-    def add_recent_project(self, name: str, path: Path) -> None:
+    def add_recent_project(self, name: str, path: Path, dossier_number: str = "") -> None:
         state = self._load_state()
         path_str = str(path.resolve())
 
@@ -104,6 +104,7 @@ class ProjectManager:
             0,
             {
                 "name": name,
+                "dossier_number": dossier_number,
                 "path": path_str,
                 "last_opened": datetime.now().isoformat(),
             },
@@ -179,7 +180,7 @@ class ProjectManager:
             except Exception:
                 pass
 
-        self.add_recent_project(project_name, project_dir)
+        self.add_recent_project(project_name, project_dir, dossier_number)
         self.add_recent_location(project_dir.parent)
 
         return project_file

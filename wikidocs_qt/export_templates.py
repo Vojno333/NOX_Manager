@@ -410,9 +410,51 @@ def _prepare_data_rows(ws, row_count: int, start_row: int = 5):
         for col in range(1, ws.max_column + 1):
             ws.cell(row, col).value = None
 
-def _scan_supplier_reference_pairs(project_dir: Path, dossier_number: str) -> list[tuple[str, str]]:
-    pairs: list[tuple[str, str]] = []
+def _rows_lookup(project_data: dict) -> dict[tuple[str, str], dict]:
+    """
+    Associe chaque couple (fournisseur, référence) à sa ligne du projet
+    (`project.json` → "rows"), qui porte le libellé, le MNP et le n° de
+    commande saisis à la création/édition du projet.
+    """
+    lookup: dict[tuple[str, str], dict] = {}
 
+    for row in project_data.get("rows", []) or []:
+        supplier = str(row.get("supplier", "")).strip()
+        reference = str(row.get("reference", "")).strip()
+        if supplier and reference:
+            lookup[(supplier, reference)] = row
+
+    return lookup
+
+
+def _scan_supplier_reference_pairs(
+    project_dir: Path,
+    dossier_number: str,
+    project_data: dict | None = None,
+) -> list[tuple[str, str]]:
+    """
+    Détermine la liste des couples (fournisseur, référence) à exporter.
+
+    Source de vérité : `project.json` → "rows", exactement comme le tableau
+    du dashboard — pour que l'export n'ait ni trou (référence absente parce
+    que son dossier a été renommé/supprimé à la main, ou non créé pour la
+    première BDD scannée) ni décalage (le nom de dossier passe par
+    `_safe_name()` à la création et peut différer du texte saisi, ce qui
+    cassait le rattachement du libellé/MNP/n° de commande).
+
+    Le scan des dossiers `Documents/` ne sert plus qu'en repli, pour les
+    projets anciens dont le fichier n'aurait pas (ou plus) de "rows".
+    """
+    rows = (project_data or {}).get("rows") or []
+    pairs = [
+        (str(r.get("supplier", "")).strip(), str(r.get("reference", "")).strip())
+        for r in rows
+        if str(r.get("supplier", "")).strip()
+    ]
+    if pairs:
+        return sorted(set(pairs), key=lambda x: (x[0].lower(), x[1].lower()))
+
+    pairs = []
     for bdd_type in ("CE", "CECC", "DPE"):
         docs_dir = project_dir / f"BDD {bdd_type} {dossier_number}" / "Documents"
         if not docs_dir.exists():
@@ -434,6 +476,7 @@ def _scan_supplier_reference_pairs(project_dir: Path, dossier_number: str) -> li
 
 def _fill_ce_sheet(ws, pairs, grouped_docs, project_dir, project_data):
     start_row = 5
+    rows_lookup = _rows_lookup(project_data)
 
     ce_column_map = {
         "2006/42/UE": "H",
@@ -450,8 +493,10 @@ def _fill_ce_sheet(ws, pairs, grouped_docs, project_dir, project_data):
     proved_row, estimated_row = _apply_footer_spacing(ws, proved_row, estimated_row, blank_rows=2)
 
     for i, (supplier, reference) in enumerate(pairs, start=start_row):
+        row_info = rows_lookup.get((supplier, reference), {})
+
         docs_cecc = grouped_docs.get((supplier, reference, "CECC"), [])
-        mpn = _get_latest_cecc_mpn(docs_cecc)
+        mpn = _get_latest_cecc_mpn(docs_cecc) or row_info.get("mnp", "")
 
         if mpn:
             ws[f"D{i}"] = mpn
@@ -463,7 +508,9 @@ def _fill_ce_sheet(ws, pairs, grouped_docs, project_dir, project_data):
 )
 
         ws[f"B{i}"] = reference
+        ws[f"C{i}"] = row_info.get("label", "")
         ws[f"E{i}"] = supplier
+        ws[f"F{i}"] = row_info.get("order_number", "")
 
         for code, col in ce_column_map.items():
             if _is_not_applicable(docs, code):
@@ -490,6 +537,7 @@ def _fill_ce_sheet(ws, pairs, grouped_docs, project_dir, project_data):
 
 def _fill_dpe_sheet(ws, pairs, grouped_docs, project_dir, project_data):
     start_row = 5
+    rows_lookup = _rows_lookup(project_data)
 
     dpe_column_map = {
         "2011/65/UE": "H",
@@ -513,12 +561,14 @@ def _fill_dpe_sheet(ws, pairs, grouped_docs, project_dir, project_data):
     proved_row, estimated_row = _apply_footer_spacing(ws, proved_row, estimated_row, blank_rows=2)
 
     for i, (supplier, reference) in enumerate(pairs, start=start_row):
+        row_info = rows_lookup.get((supplier, reference), {})
+
         docs_cecc = grouped_docs.get((supplier, reference, "CECC"), [])
-        mpn = _get_latest_cecc_mpn(docs_cecc)
+        mpn = _get_latest_cecc_mpn(docs_cecc) or row_info.get("mnp", "")
 
         if mpn:
             ws[f"D{i}"] = mpn
-            
+
         docs = grouped_docs.get((supplier, reference, "DPE"), [])
         latest_by_requirement = _latest_doc_by_requirement(
     docs,
@@ -526,7 +576,9 @@ def _fill_dpe_sheet(ws, pairs, grouped_docs, project_dir, project_data):
 )
 
         ws[f"B{i}"] = reference
+        ws[f"C{i}"] = row_info.get("label", "")
         ws[f"E{i}"] = supplier
+        ws[f"F{i}"] = row_info.get("order_number", "")
 
         for code, col in dpe_column_map.items():
             if _is_not_applicable(docs, code):
@@ -551,8 +603,9 @@ def _fill_dpe_sheet(ws, pairs, grouped_docs, project_dir, project_data):
     _update_dpe_footer_formulas(ws, proved_row, estimated_row, last_data_row)
 
 
-def _fill_cecc_sheet(ws, pairs, grouped_docs, project_dir):
+def _fill_cecc_sheet(ws, pairs, grouped_docs, project_dir, project_data):
     start_row = 5
+    rows_lookup = _rows_lookup(project_data)
 
     table_end_row, proved_row, estimated_row = _resize_table_area(
         ws, len(pairs), start_row=start_row, footer_row_1=235, footer_row_2=236
@@ -561,20 +614,29 @@ def _fill_cecc_sheet(ws, pairs, grouped_docs, project_dir):
     proved_row, estimated_row = _apply_footer_spacing(ws, proved_row, estimated_row, blank_rows=2)
 
     for i, (supplier, reference) in enumerate(pairs, start=start_row):
+        row_info = rows_lookup.get((supplier, reference), {})
         docs = grouped_docs.get((supplier, reference, "CECC"), [])
         first = _first_doc(docs)
 
         ws[f"B{i}"] = reference
+        ws[f"C{i}"] = row_info.get("label", "")
         ws[f"E{i}"] = supplier
+        ws[f"F{i}"] = row_info.get("order_number", "")
+
+        mpn = row_info.get("mnp", "")
+        if mpn:
+            ws[f"D{i}"] = mpn
 
         if not first:
             continue
 
         cecc = first.get("cecc_fields", {})
 
-        ws[f"D{i}"] = cecc.get("manufacturer_part_number", "")
+        manufacturer_mpn = cecc.get("manufacturer_part_number", "") or mpn
+        if manufacturer_mpn:
+            ws[f"D{i}"] = manufacturer_mpn
         ws[f"G{i}"] = cecc.get("manufacturer_doc", "")
-        ws[f"H{i}"] = cecc.get("manufacturer_part_number", "")
+        ws[f"H{i}"] = manufacturer_mpn
         ws[f"I{i}"] = cecc.get("status", "")
 
         # Colonne K = Nom du document CECC + lien cliquable
@@ -605,7 +667,7 @@ def export_project_templates(project_dir: Path) -> list[Path]:
     enabled_bdds = project_data.get("enabled_bdds", ["CE", "CECC", "DPE"])
 
     grouped_docs = _group_docs(project_dir)
-    pairs = _scan_supplier_reference_pairs(project_dir, dossier_number)
+    pairs = _scan_supplier_reference_pairs(project_dir, dossier_number, project_data)
 
     base_dir = Path(__file__).resolve().parent.parent
 
@@ -641,7 +703,7 @@ def export_project_templates(project_dir: Path) -> list[Path]:
         wb_cecc = load_workbook(cecc_template)
         ws_cecc = _first_sheet(wb_cecc)
         _apply_project_identity(ws_cecc, "CECC", project_name)
-        _fill_cecc_sheet(ws_cecc, pairs, grouped_docs, project_dir)
+        _fill_cecc_sheet(ws_cecc, pairs, grouped_docs, project_dir, project_data)
         _reset_sheet_view_to_a1(ws_cecc)
         wb_cecc.save(cecc_output)
         exports.append(cecc_output)

@@ -1,6 +1,6 @@
 ---
 tags: [nox, journal]
-maj: 2026-09-21
+maj: 2026-10-16
 ---
 
 ↑ [[00 - Index]]
@@ -13,6 +13,17 @@ Modèle d'entrée : [[Modèle - Entrée de journal]].
 
 
 ---
+
+## 2026-10-16 : alignement export ↔ interface
+**Objectif** : corriger des signalements utilisateur — import en masse décalé, dossier « chapo » en trop à la création de projet, numéro affiché en trop d'endroits, export Excel avec des colonnes vides.
+**Fait** :
+- Import en masse (`new_project_dialog.py`) : `_lines()` supprimait les lignes vides colonne par colonne, décalant les colonnes entre elles dès qu'une ligne était vide dans une seule d'entre elles. Remplacé par `_split_bulk_column` (conserve la position de chaque ligne) ; le filtrage des lignes totalement vides se fait après coup, dans `_import_bulk_rows`.
+- Création de projet : `project_dir` était `emplacement / numéro d'affaire`. C'est maintenant directement `emplacement` : plus de dossier « chapo », `.nox` et `BDD …` se créent à la racine choisie.
+- Accueil et dashboard affichaient le numéro de l'affaire (`project_name`) ; ils affichent maintenant `dossier_number` (ajouté à `nox_state.json` via `ProjectManager.add_recent_project`), avec repli sur le nom si absent (anciens projets).
+- Export Excel (`export_templates.py`) : colonnes Libellé (C), MPN (D), N° de commande (F) jamais remplies. Cause racine : `_fill_*_sheet` ne lisait jamais `project.json → rows` (seulement B/E depuis le scan des dossiers, D depuis un éventuel document CECC uploadé). Ajout de `_rows_lookup` pour relire label/mnp/order_number par (fournisseur, référence).
+- En testant ce correctif, un deuxième problème, plus profond, est apparu : l'export construisait sa liste de références par **scan des dossiers** (`_scan_supplier_reference_pairs`, propre à `export_templates.py`), alors que le dashboard part de `rows` en priorité (c'était l'ex-BUG-004, retiré de [[Bugs connus]]). Les noms de dossiers passent par `_safe_name()` à la création (espaces normalisés, caractères interdits remplacés) : les clés ne correspondaient plus à celles de `_rows_lookup`, et une référence dont le dossier avait été renommé/supprimé à la main disparaissait silencieusement de l'export sans disparaître du dashboard. Alignée sur l'implémentation du dashboard : `rows` en priorité, scan des dossiers seulement en repli (projets anciens sans `rows`).
+**Décidé** : ne pas fusionner les deux implémentations de `_scan_supplier_reference_pairs` (dashboard / export) dans ce passage — elles se comportent maintenant pareil mais restent dupliquées (voir [[Dette technique#DT-001]]).
+**Reste / prochain pas** : envisager le module `compliance.py` sans Qt de [[Dette technique#DT-001]] pour porter cette logique une seule fois ; vérifier BUG-006 (MPN dupliqué en D et H dans l'export CECC) si l'occasion se présente.
 
 ## 2026-09-21 : réorganisation de la documentation
 **Objectif** : supprimer les liens cassés, éviter les doublons et donner un point d'entrée unique.

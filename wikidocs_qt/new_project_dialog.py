@@ -853,18 +853,36 @@ class NewProjectDialog(QtWidgets.QDialog):
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Erreur", f"Impossible d'enregistrer le modèle.\n\n{e}")
 
+    @staticmethod
+    def _split_bulk_column(edit: QtWidgets.QPlainTextEdit) -> list[str]:
+        """Découpe une colonne de l'import en masse en conservant la position des lignes.
+
+        Une ligne vide au milieu du texte doit rester une valeur vide à son
+        index (pas de décalage des lignes suivantes vers le haut) : seules
+        les lignes vides en fin de texte (saut de ligne final, etc.) sont
+        ignorées.
+        """
+        lines = [l.strip() for l in edit.toPlainText().splitlines()]
+        while lines and not lines[-1]:
+            lines.pop()
+        return lines
+
     def _parse_bulk_lines(self) -> list[dict]:
-        """Parse les 4 colonnes de l'onglet import en masse et retourne une liste de dicts."""
-        def _lines(edit: QtWidgets.QPlainTextEdit) -> list[str]:
-            return [l.strip() for l in edit.toPlainText().splitlines() if l.strip()]
+        """Parse les 5 colonnes de l'onglet import en masse et retourne une liste de dicts.
 
-        suppliers  = _lines(self._bulk_supplier_edit)
-        references = _lines(self._bulk_ref_edit)
-        labels     = _lines(self._bulk_label_edit)
-        mnps       = _lines(self._bulk_mnp_edit)
-        orders     = _lines(self._bulk_order_edit)
+        Les lignes sont assemblées par index (ligne 1 de chaque colonne → ligne 1
+        du dossier, etc.) afin qu'une cellule vide reste vide sans décaler les
+        autres colonnes. Les lignes totalement vides (aucune donnée dans aucune
+        colonne) ne sont pas filtrées ici : c'est `_import_bulk_rows` /
+        `is_filled()` qui s'en charge une fois l'alignement garanti.
+        """
+        suppliers  = self._split_bulk_column(self._bulk_supplier_edit)
+        references = self._split_bulk_column(self._bulk_ref_edit)
+        labels     = self._split_bulk_column(self._bulk_label_edit)
+        mnps       = self._split_bulk_column(self._bulk_mnp_edit)
+        orders     = self._split_bulk_column(self._bulk_order_edit)
 
-        if not suppliers:
+        if not any([suppliers, references, labels, mnps, orders]):
             return []
 
         max_len = max(len(suppliers), len(references), len(labels), len(mnps), len(orders))
@@ -875,19 +893,24 @@ class NewProjectDialog(QtWidgets.QDialog):
             label     = labels[i]     if i < len(labels)     else ""
             mnp       = mnps[i]       if i < len(mnps)       else ""
             order     = orders[i]     if i < len(orders)     else ""
-            if supplier:
-                rows.append({
-                    "supplier":      supplier,
-                    "reference":     reference,
-                    "label":         label,
-                    "mnp":           mnp,
-                    "order_number":  order,
-                })
+            rows.append({
+                "supplier":      supplier,
+                "reference":     reference,
+                "label":         label,
+                "mnp":           mnp,
+                "order_number":  order,
+            })
         return rows
 
     def _import_bulk_rows(self):
         """Importe les lignes de l'onglet masse dans l'onglet saisie manuelle."""
         parsed = self._parse_bulk_lines()
+
+        # Les lignes totalement vides (aucune donnée dans aucune colonne) ne sont
+        # pas importées : on ne les retire qu'une fois l'alignement par index
+        # garanti ci-dessus, pour ne jamais décaler une colonne par rapport
+        # aux autres.
+        parsed = [data for data in parsed if any(data.values())]
 
         if not parsed:
             QtWidgets.QMessageBox.information(
@@ -898,8 +921,8 @@ class NewProjectDialog(QtWidgets.QDialog):
             return
 
         # Vérification longueurs incohérentes (optionnelle, avertissement doux)
-        suppliers  = [l.strip() for l in self._bulk_supplier_edit.toPlainText().splitlines() if l.strip()]
-        references = [l.strip() for l in self._bulk_ref_edit.toPlainText().splitlines()      if l.strip()]
+        suppliers  = self._split_bulk_column(self._bulk_supplier_edit)
+        references = self._split_bulk_column(self._bulk_ref_edit)
         if references and len(suppliers) != len(references):
             answer = QtWidgets.QMessageBox.question(
                 self,
@@ -1266,7 +1289,9 @@ class NewProjectDialog(QtWidgets.QDialog):
         rows           = self._parse_rows_for_structure()
         enabled_bdds   = self._selected_bdds()
         rows_data      = self._get_rows_data()
-        project_dir    = location / project_name
+        # L'emplacement choisi accueille directement .nox et les dossiers BDD,
+        # sans dossier intermédiaire nommé d'après le numéro de l'affaire.
+        project_dir    = location
 
         if project_dir.exists() and any(project_dir.iterdir()):
             answer = QtWidgets.QMessageBox.question(
