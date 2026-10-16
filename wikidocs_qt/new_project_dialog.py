@@ -10,6 +10,7 @@ from .project_manager import ProjectManager
 from .project_structure import create_folders_and_subfolders
 from .document_rules import JUSTIFICATION_TYPES
 from .metadata_db import delete_uploaded_documents_for_rows
+from .window_geometry import fit_and_center
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -373,6 +374,7 @@ class NewProjectDialog(QtWidgets.QDialog):
     projectUpdated = QtCore.Signal(dict)
 
     _BATCH = 10
+    MAX_ROWS = 1000  # Limite de dossiers (lignes fournisseur/référence) créables
 
     def __init__(self, parent=None, project_data: dict | None = None):
         super().__init__(parent)
@@ -385,8 +387,7 @@ class NewProjectDialog(QtWidgets.QDialog):
             if self.edit_mode
             else "Nouveau projet — NOX_Manager"
         )
-        self.resize(1100, 820)
-        self.setMinimumSize(900, 680)
+        fit_and_center(self, 1100, 820, min_w=760, min_h=560)
         self.setStyleSheet(STYLESHEET)
 
         self.project_manager = ProjectManager()
@@ -768,6 +769,10 @@ class NewProjectDialog(QtWidgets.QDialog):
             "Libellé", "Une ligne par libellé",
             ["Vis inox M6 x 20", "Écrou frein M6", "Rondelle plate M6", "Vis tête hexagonale M8 x 25"],
         )
+        self._bulk_mnp_edit = _bulk_col(
+            "MNP", "Une ligne par MNP",
+            ["MNP-001", "MNP-002", "MNP-003", "MNP-004"],
+        )
         self._bulk_order_edit = _bulk_col(
             "N° de commande", "Une ligne par n° de commande",
             ["CMD-2024-0001", "CMD-2024-0002", "CMD-2024-0003", "CMD-2024-0004"],
@@ -833,11 +838,11 @@ class NewProjectDialog(QtWidgets.QDialog):
             return
         try:
             content = (
-                "Fournisseur;Reference;Libelle;N_commande\n"
-                "VisioParts;VIS-001;Vis inox M6 x 20;CMD-2024-0001\n"
-                "TechnoVis;VIS-002;Écrou frein M6;CMD-2024-0002\n"
-                "FixPro;TV-010;Rondelle plate M6;CMD-2024-0003\n"
-                "Soprema;TV-011;Vis tête hexagonale M8 x 25;CMD-2024-0004\n"
+                "Fournisseur;Reference;Libelle;MNP;N_commande\n"
+                "VisioParts;VIS-001;Vis inox M6 x 20;MNP-001;CMD-2024-0001\n"
+                "TechnoVis;VIS-002;Écrou frein M6;MNP-002;CMD-2024-0002\n"
+                "FixPro;TV-010;Rondelle plate M6;MNP-003;CMD-2024-0003\n"
+                "Soprema;TV-011;Vis tête hexagonale M8 x 25;MNP-004;CMD-2024-0004\n"
             )
             Path(path).write_text(content, encoding="utf-8-sig")
             QtWidgets.QMessageBox.information(
@@ -856,23 +861,26 @@ class NewProjectDialog(QtWidgets.QDialog):
         suppliers  = _lines(self._bulk_supplier_edit)
         references = _lines(self._bulk_ref_edit)
         labels     = _lines(self._bulk_label_edit)
+        mnps       = _lines(self._bulk_mnp_edit)
         orders     = _lines(self._bulk_order_edit)
 
         if not suppliers:
             return []
 
-        max_len = max(len(suppliers), len(references), len(labels), len(orders))
+        max_len = max(len(suppliers), len(references), len(labels), len(mnps), len(orders))
         rows = []
         for i in range(max_len):
             supplier  = suppliers[i]  if i < len(suppliers)  else ""
             reference = references[i] if i < len(references) else ""
             label     = labels[i]     if i < len(labels)     else ""
+            mnp       = mnps[i]       if i < len(mnps)       else ""
             order     = orders[i]     if i < len(orders)     else ""
             if supplier:
                 rows.append({
                     "supplier":      supplier,
                     "reference":     reference,
                     "label":         label,
+                    "mnp":           mnp,
                     "order_number":  order,
                 })
         return rows
@@ -927,6 +935,7 @@ class NewProjectDialog(QtWidgets.QDialog):
         self._bulk_supplier_edit.clear()
         self._bulk_ref_edit.clear()
         self._bulk_label_edit.clear()
+        self._bulk_mnp_edit.clear()
         self._bulk_order_edit.clear()
 
         # Bascule vers l'onglet saisie manuelle pour vérification
@@ -991,14 +1000,25 @@ class NewProjectDialog(QtWidgets.QDialog):
         filled = sum(1 for r in self._rows if r.is_filled())
         total  = len(self._rows)
         self.row_counter_label.setText(
-            f"{filled} ligne(s) renseignée(s) sur {total}"
+            f"{filled} ligne(s) renseignée(s) sur {total}  (limite : {self.MAX_ROWS})"
         )
 
     # ── Row management ────────────────────────────────────────────────────────
 
     def _add_batch_rows(self):
+        if len(self._rows) >= self.MAX_ROWS:
+            QtWidgets.QMessageBox.warning(
+                self,
+                "Limite atteinte",
+                f"Le nombre maximal de dossiers pour un projet est de {self.MAX_ROWS}.\n"
+                "Impossible d'ajouter de nouvelles lignes."
+            )
+            return
+
+        to_add = min(self._BATCH, self.MAX_ROWS - len(self._rows))
+
         stretch_item = self._rows_layout.takeAt(self._rows_layout.count() - 1)
-        for _ in range(self._BATCH):
+        for _ in range(to_add):
             idx = len(self._rows) + 1
             alt = (idx % 2 == 0)
             row = ReferenceRow(idx, alt=alt, parent=self._rows_container)
@@ -1007,6 +1027,14 @@ class NewProjectDialog(QtWidgets.QDialog):
             self._rows_layout.addWidget(row)
         self._rows_layout.addStretch(1)
         self._update_row_counter()
+
+        if to_add < self._BATCH:
+            QtWidgets.QMessageBox.information(
+                self,
+                "Limite atteinte",
+                f"Seules {to_add} ligne(s) ont pu être ajoutées pour respecter "
+                f"la limite de {self.MAX_ROWS} dossiers."
+            )
         # Scroll to bottom
         QtCore.QTimer.singleShot(
             50,
@@ -1077,7 +1105,7 @@ class NewProjectDialog(QtWidgets.QDialog):
     def _open_calendar(self):
         dialog = QtWidgets.QDialog(self)
         dialog.setWindowTitle("Choisir une date")
-        dialog.resize(320, 280)
+        fit_and_center(dialog, 320, 280, min_w=280, min_h=240)
 
         layout = QtWidgets.QVBoxLayout(dialog)
 
@@ -1140,6 +1168,12 @@ class NewProjectDialog(QtWidgets.QDialog):
 
         if not filled_rows:
             return False, "Ajoutez au moins une ligne avec un fournisseur et un N° de référence."
+
+        if len(filled_rows) > self.MAX_ROWS:
+            return False, (
+                f"Le nombre de dossiers à créer ({len(filled_rows)}) dépasse "
+                f"la limite autorisée de {self.MAX_ROWS}."
+            )
 
         for i, row in enumerate(filled_rows, start=1):
             if not row.is_valid_minimum():

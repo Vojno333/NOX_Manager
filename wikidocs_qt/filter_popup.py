@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from PySide6 import QtCore, QtWidgets
 
+from .window_geometry import fit_and_center
+
 
 class FilterPopup(QtWidgets.QDialog):
     def __init__(self, title: str, values: list[str], checked_values: set[str] | None = None, parent=None):
         super().__init__(parent)
         self.setWindowTitle(title)
-        self.resize(320, 420)
+        fit_and_center(self, 320, 420, min_w=260, min_h=320)
 
         self.all_values = list(dict.fromkeys(values))
         self.checked_values = set(checked_values or self.all_values)

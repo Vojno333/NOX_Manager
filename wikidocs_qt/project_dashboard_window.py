@@ -10,6 +10,7 @@ from datetime import datetime
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtSvg import QSvgRenderer
 
 from .filter_popup import FilterPopup
 from .metadata_db import init_metadata_db, get_uploaded_documents
@@ -19,6 +20,7 @@ from .document_rules import CE_REQUIREMENTS, DPE_REQUIREMENTS, JUSTIFICATION_TYP
 from .project_manager import ProjectManager
 from .project_structure import create_folders_and_subfolders
 from .new_project_dialog import NewProjectDialog
+from .window_geometry import fit_and_center
 
 # ── Palette ───────────────────────────────────────────────────────────────────
 TOPBAR_BG   = "#111827"
@@ -81,11 +83,27 @@ def _make_label(text: str, font: QFont = F_BODY, color: str = DARK) -> QtWidgets
     lbl.setStyleSheet(f"color:{color}; background:transparent;")
     return lbl
 
+# ── Icônes (SVG → QPixmap) ───────────────────────────────────────────────────
+ICONS_DIR = Path(__file__).parent
+EU_ICON_PATH = ICONS_DIR / "eu_icon.svg"
+DPE_ICON_PATH = ICONS_DIR / "dpe_icon.svg"
+
+def _svg_pixmap(svg_path: Path, size: int = 20) -> QtGui.QPixmap:
+    """Rend un fichier SVG en QPixmap."""
+    renderer = QSvgRenderer(str(svg_path))
+    pixmap = QtGui.QPixmap(size, size)
+    pixmap.fill(QtCore.Qt.transparent)
+    painter = QtGui.QPainter(pixmap)
+    renderer.render(painter)
+    painter.end()
+    return pixmap
+
+
 # ── KPI card ──────────────────────────────────────────────────────────────────
 class KpiCard(QtWidgets.QFrame):
     """White card with icon, value, subtitle and optional progress bar."""
 
-    def __init__(self, icon: str, title: str, value: str = "—",
+    def __init__(self, icon: str | QtGui.QPixmap, title: str, value: str = "—",
                  subtitle: str = "", bar_color: str = "", icon_bg: str = "#F0F4FF",
                  parent=None):
         super().__init__(parent)
@@ -111,7 +129,11 @@ class KpiCard(QtWidgets.QFrame):
         icon_frame = QtWidgets.QFrame()
         icon_frame.setFixedSize(36, 36)
         icon_frame.setStyleSheet(f"background:{icon_bg}; border-radius:8px;")
-        icon_lbl = QtWidgets.QLabel(icon, icon_frame)
+        if isinstance(icon, QtGui.QPixmap):
+            icon_lbl = QtWidgets.QLabel(icon_frame)
+            icon_lbl.setPixmap(icon)
+        else:
+            icon_lbl = QtWidgets.QLabel(icon, icon_frame)
         icon_lbl.setAlignment(Qt.AlignCenter)
         icon_lbl.setStyleSheet("font-size:16px; background:transparent;")
         il = QtWidgets.QVBoxLayout(icon_frame)
@@ -227,6 +249,94 @@ def _completion_badge(pct_str: str) -> QtWidgets.QLabel:
         font-size:9pt; font-weight:700;
     """)
     return lbl
+
+# ── Filterable header ─────────────────────────────────────────────────────────
+class FilterableHeader(QtWidgets.QHeaderView):
+    """Header with a clickable filter button on designated columns."""
+    filterRequested = QtCore.Signal(int)
+
+    FILTER_COLS = {0, 1, 2, 5, 6}  # Fournisseur, Référence, Libellé, Type, Complétude
+    _ICON_W = 22
+    _ICON_MARGIN = 4
+
+    def __init__(self, orientation, parent=None):
+        super().__init__(orientation, parent)
+        self._active_filters: set[int] = set()
+        self._hovered_col: int = -1
+        self.setSectionsClickable(True)
+        self.setHighlightSections(False)
+        self.setMouseTracking(True)
+
+    def set_active(self, col: int, active: bool):
+        if active:
+            self._active_filters.add(col)
+        else:
+            self._active_filters.discard(col)
+        self.viewport().update()
+
+    def _icon_rect(self, rect: QtCore.QRect) -> QtCore.QRect:
+        return QtCore.QRect(
+            rect.right() - self._ICON_W - self._ICON_MARGIN,
+            rect.top() + (rect.height() - self._ICON_W) // 2,
+            self._ICON_W, self._ICON_W,
+        )
+
+    def paintSection(self, painter, rect, logical_index):
+        painter.save()
+        super().paintSection(painter, rect, logical_index)
+        painter.restore()
+        if logical_index in self.FILTER_COLS and rect.width() > 34:
+            active  = logical_index in self._active_filters
+            hovered = logical_index == self._hovered_col
+            icon_rect = self._icon_rect(rect)
+
+            painter.save()
+            painter.setRenderHint(QtGui.QPainter.Antialiasing)
+            if active:
+                bg, fg = QColor(BLUE), QColor(WHITE)
+            elif hovered:
+                bg, fg = QColor(GRAY_BORDER), QColor(DARK)
+            else:
+                bg, fg = QColor("#EEF1F5"), QColor("#9CA3AF")
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(bg)
+            painter.drawRoundedRect(icon_rect, 5, 5)
+            painter.setPen(fg)
+            painter.setFont(QFont("Segoe UI", 8))
+            painter.drawText(icon_rect, Qt.AlignCenter, "▾")
+            painter.restore()
+
+    def _icon_col_at(self, pos) -> int:
+        col = self.logicalIndexAt(pos)
+        if col in self.FILTER_COLS:
+            sec_x = self.sectionViewportPosition(col)
+            sec_w = self.sectionSize(col)
+            rect  = QtCore.QRect(sec_x, 0, sec_w, self.height())
+            if self._icon_rect(rect).adjusted(-4, -4, 4, 4).contains(pos):
+                return col
+        return -1
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            col = self._icon_col_at(event.pos())
+            if col != -1:
+                self.filterRequested.emit(col)
+                return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        col = self._icon_col_at(event.pos())
+        if col != self._hovered_col:
+            self._hovered_col = col
+            self.viewport().update()
+        self.setCursor(Qt.PointingHandCursor if col != -1 else Qt.ArrowCursor)
+        super().mouseMoveEvent(event)
+
+    def leaveEvent(self, event):
+        if self._hovered_col != -1:
+            self._hovered_col = -1
+            self.viewport().update()
+        super().leaveEvent(event)
 
 # ── Detail panel ──────────────────────────────────────────────────────────────
 class DetailPanel(QtWidgets.QFrame):
@@ -378,8 +488,9 @@ class DetailPanel(QtWidgets.QFrame):
         t.setHorizontalHeaderLabels(["Exigence", "Applicabilité", "Nom du document"])
         t.horizontalHeader().setFont(F_BOLD)
         t.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-        t.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+        t.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
         t.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
+        t.setColumnWidth(1, 115)
         t.verticalHeader().setVisible(False)
         t.setShowGrid(False)
         t.setAlternatingRowColors(True)
@@ -452,8 +563,9 @@ class DetailPanel(QtWidgets.QFrame):
             self._tbl_docs.setColumnCount(3)
             self._tbl_docs.setHorizontalHeaderLabels(["Exigence", "Applicabilité", "Nom du document"])
             self._tbl_docs.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.Stretch)
-            self._tbl_docs.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)
+            self._tbl_docs.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.Fixed)
             self._tbl_docs.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)
+            self._tbl_docs.setColumnWidth(1, 115)
 
         self._tbl_docs.setRowCount(len(detail_rows))
         for i, detail in enumerate(detail_rows):
@@ -582,15 +694,34 @@ class MainTab(QtWidgets.QWidget):
 
         self.table = QtWidgets.QTableWidget(0, len(self.COLUMNS))
         self.table.setHorizontalHeaderLabels(self.COLUMNS)
+
+        fh = FilterableHeader(Qt.Horizontal, self.table)
+        self.table.setHorizontalHeader(fh)
+
         hh = self.table.horizontalHeader()
         hh.setFont(F_BOLD)
-        hh.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)  # Fournisseur
-        hh.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeToContents)  # Référence
-        hh.setSectionResizeMode(2, QtWidgets.QHeaderView.Stretch)           # Libellé équipement
-        hh.setSectionResizeMode(3, QtWidgets.QHeaderView.ResizeToContents)  # MNP
-        hh.setSectionResizeMode(4, QtWidgets.QHeaderView.ResizeToContents)  # N° commande
-        hh.setSectionResizeMode(5, QtWidgets.QHeaderView.ResizeToContents)  # Type
-        hh.setSectionResizeMode(6, QtWidgets.QHeaderView.ResizeToContents)  # Complétude
+
+        # Tailles initiales et minimales par colonne
+        _col_cfg = [
+            # (mode,                                  default_w, min_w)
+            (QtWidgets.QHeaderView.Interactive, 120,  80),   # 0 Fournisseur
+            (QtWidgets.QHeaderView.Interactive, 110,  80),   # 1 Référence
+            (QtWidgets.QHeaderView.Stretch,       0, 140),   # 2 Libellé (étire l'espace libre)
+            (QtWidgets.QHeaderView.Interactive,  65,  50),   # 3 MNP
+            (QtWidgets.QHeaderView.Interactive, 120,  80),   # 4 N° commande
+            (QtWidgets.QHeaderView.Interactive,  75,  60),   # 5 Type
+            (QtWidgets.QHeaderView.Interactive, 100,  80),   # 6 Complétude
+        ]
+        self._col_min_widths = [cfg[2] for cfg in _col_cfg]
+
+        for i, (mode, default_w, _) in enumerate(_col_cfg):
+            hh.setSectionResizeMode(i, mode)
+            if mode == QtWidgets.QHeaderView.Interactive and default_w:
+                hh.resizeSection(i, default_w)
+
+        hh.setMinimumSectionSize(50)
+        hh.sectionResized.connect(self._on_section_resized)
+
         self.table.verticalHeader().setVisible(False)
         self.table.setShowGrid(False)
         self.table.setAlternatingRowColors(True)
@@ -598,6 +729,7 @@ class MainTab(QtWidgets.QWidget):
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         self.table.setSortingEnabled(True)
+        self.table.setWordWrap(True)
         self.table.setStyleSheet(f"""
             QTableWidget {{
                 border:none; font-size:9pt;
@@ -605,14 +737,30 @@ class MainTab(QtWidgets.QWidget):
             }}
             QHeaderView::section {{
                 background:{GRAY_LIGHT}; color:{GRAY_TEXT};
-                border:none; border-bottom:2px solid {GRAY_BORDER};
+                border:none;
+                border-right:1px solid {GRAY_BORDER};
+                border-bottom:2px solid {GRAY_BORDER};
                 padding:7px 8px; font-weight:700; font-size:8pt;
             }}
-            QTableWidget::item {{ padding:6px 8px; color:{DARK}; }}
-            QTableWidget::item:selected {{ background:{SEL_BG}; color:{BLUE}; }}
+            QHeaderView::section:last {{
+                border-right:none;
+            }}
+            QTableWidget::item {{
+                padding:6px 8px; color:{DARK};
+                border-right:1px solid #EAECF0;
+            }}
+            QTableWidget::item:selected {{
+                background:{SEL_BG}; color:{BLUE};
+                border-right:1px solid #BFDBFE;
+            }}
         """)
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
         h.addWidget(self.table, 1)
+
+    def _on_section_resized(self, logical_index: int, _old: int, new_size: int):
+        min_w = self._col_min_widths[logical_index] if logical_index < len(self._col_min_widths) else 50
+        if new_size < min_w:
+            self.table.horizontalHeader().resizeSection(logical_index, min_w)
 
     def _on_selection_changed(self):
         idxs = self.table.selectedIndexes()
@@ -644,7 +792,7 @@ class MainTab(QtWidgets.QWidget):
     (row.get("supplier", ""),       Qt.AlignLeft  | Qt.AlignVCenter),
     (row.get("reference", ""),      Qt.AlignLeft  | Qt.AlignVCenter),
     (row.get("label", ""),          Qt.AlignLeft  | Qt.AlignVCenter),
-    (str(row.get("documents_db", row.get("documents", 0))), Qt.AlignCenter),
+    (row.get("mnp", ""),            Qt.AlignCenter),
     (row.get("order_number", ""),   Qt.AlignCenter),
     (row.get("type", ""),           Qt.AlignCenter),
     (row.get("completion", "—"),    Qt.AlignCenter),
@@ -661,7 +809,7 @@ class MainTab(QtWidgets.QWidget):
                     item.setFont(font)
                 self.table.setItem(ri, ci, item)
 
-        self.table.verticalHeader().setDefaultSectionSize(34)
+        self.table.verticalHeader().setDefaultSectionSize(52)
         self.table.setSortingEnabled(True)
         #self.table.sortByColumn(0, Qt.AscendingOrder)
 
@@ -694,7 +842,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self.enabled_bdds   = list(project_data.get("enabled_bdds", JUSTIFICATION_TYPES))
 
         self.column_filters: dict[str, set[str] | None] = {
-            "supplier": None, "reference": None,
+            "supplier": None, "reference": None, "label": None,
             "type": None,     "completion": None,
         }
         self.tab_widgets_by_name: dict[str, MainTab] = {}
@@ -706,8 +854,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(
             f"NOX_Manager — {project_data.get('project_name', self.project_dir.name)}"
         )
-        self.resize(1400, 860)
-        self.setMinimumSize(1100, 700)
+        fit_and_center(self, 1400, 860, min_w=1000, min_h=620)
 
         self._build_ui()
         self._load_table()
@@ -724,14 +871,8 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
 
         root.addWidget(self._build_topbar())
 
-        # Body: sidebar + content
-        body = QtWidgets.QWidget()
-        body_h = QtWidgets.QHBoxLayout(body)
-        body_h.setContentsMargins(0, 0, 0, 0)
-        body_h.setSpacing(0)
-        body_h.addWidget(self._build_sidebar())
-        body_h.addWidget(self._build_content(), 1)
-        root.addWidget(body, 1)
+        self._lbl_date = _make_label("—", F_SMALL, DARK)  # timestamp (non affiché)
+        root.addWidget(self._build_content(), 1)
 
     # ── Top bar (dark) ────────────────────────────────────────────────────────
     def _build_topbar(self) -> QtWidgets.QWidget:
@@ -858,15 +999,15 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         h.setSpacing(8)
 
         self.kpi_ce = KpiCard(
-            "📋", "CE", "0 %", "Complétude",
-            bar_color=KPI_BAR_COLORS["CE"], icon_bg="#FEF3C7"
+            _svg_pixmap(EU_ICON_PATH, 20), "CE", "0 %", "Complétude",
+            bar_color=KPI_BAR_COLORS["CE"], icon_bg="#F5F1DE"
         )
         self.kpi_cecc = KpiCard(
-            "🎁", "CECC", "0 %", "Complétude",
+            "📋", "CECC", "0 %", "Complétude",
             bar_color=KPI_BAR_COLORS["CECC"], icon_bg="#EDE9FE"
         )
         self.kpi_dpe = KpiCard(
-            "🌿", "DPE", "0 %", "Complétude",
+            _svg_pixmap(DPE_ICON_PATH, 20), "DPE", "0 %", "Complétude",
             bar_color=KPI_BAR_COLORS["DPE"], icon_bg="#D1FAE5"
         )
         for card in (self.kpi_ce, self.kpi_cecc, self.kpi_dpe):
@@ -943,39 +1084,37 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         h.setContentsMargins(12, 8, 12, 8)
         h.setSpacing(6)
 
-        self.chip_supplier = FilterChip("Fournisseur")
-        self.chip_reference = FilterChip("Référence")
-        self.chip_type = FilterChip("Type")
-        self.chip_completion = FilterChip("Complétude")
-
-        self.chip_supplier.clicked.connect(
-            lambda: self._open_column_filter("supplier", "Filtrer les fournisseurs")
+        hint = _make_label(
+            "💡  Clique sur le ▾ d'une colonne (Fournisseur, Référence, Libellé, Type, Complétude) pour filtrer",
+            F_SMALL, GRAY_TEXT,
         )
-        self.chip_reference.clicked.connect(
-            lambda: self._open_column_filter("reference", "Filtrer les références")
-        )
-        self.chip_type.clicked.connect(
-            lambda: self._open_column_filter("type", "Filtrer les types")
-        )
-        self.chip_completion.clicked.connect(
-            lambda: self._open_column_filter("completion", "Filtrer la complétude")
-        )
-
-        for chip in (self.chip_supplier, self.chip_reference,
-                     self.chip_type, self.chip_completion):
-            h.addWidget(chip)
+        h.addWidget(hint)
 
         h.addStretch(1)
 
-        sep = QtWidgets.QFrame()
-        sep.setFrameShape(QtWidgets.QFrame.VLine)
-        sep.setFixedHeight(24)
-        sep.setStyleSheet(f"color:{GRAY_BORDER};")
-        h.addWidget(sep)
+        btn_applicability = QtWidgets.QPushButton("Applicabilité")
+        btn_applicability.setFont(F_BOLD)
+        btn_applicability.setFixedHeight(34)
+        btn_applicability.setMinimumWidth(140)
+        btn_applicability.setCursor(Qt.PointingHandCursor)
+        btn_applicability.setStyleSheet(f"""
+            QPushButton {{
+                background:{ORANGE_BG}; color:{ORANGE_WARN};
+                border:1px solid {ORANGE_WARN}; border-radius:8px;
+                padding:0 18px; font-size:9pt; font-weight:700;
+            }}
+            QPushButton:hover   {{ background:#FDE8C8; }}
+            QPushButton:pressed {{ background:#FBDBA7; }}
+        """)
+        btn_applicability.setToolTip(
+            "Définir l'applicabilité (Applicable / N/A) des exigences, sans importer de document."
+        )
+        btn_applicability.clicked.connect(lambda: self._open_upload_from_selection(mode="applicability"))
+        h.addWidget(btn_applicability)
 
         btn_import = QtWidgets.QPushButton("＋  Importer un document")
         btn_import.setFont(F_BOLD)
-        btn_import.setFixedHeight(32)
+        btn_import.setFixedHeight(34)
         btn_import.setCursor(Qt.PointingHandCursor)
         btn_import.setStyleSheet(f"""
             QPushButton {{
@@ -986,7 +1125,10 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             QPushButton:hover   {{ background:{BLUE_DARK}; }}
             QPushButton:pressed {{ background:#1E40AF; }}
         """)
-        btn_import.clicked.connect(self._open_upload_from_selection)
+        btn_import.setToolTip(
+            "Importer un document et cocher les exigences qu'il couvre."
+        )
+        btn_import.clicked.connect(lambda: self._open_upload_from_selection(mode="import"))
         h.addWidget(btn_import)
         return bar
 
@@ -1013,19 +1155,20 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             }}
             QTabBar {{ background:{WHITE}; border-bottom:1px solid {GRAY_BORDER}; }}
         """)
-        self.tabs.currentChanged.connect(self._on_tab_changed)
-
         tab_all = MainTab(self)
         self.tab_widgets_by_name["Tous"] = tab_all
         self.tabs.addTab(tab_all, "Tous")
         tab_all.rowSelected.connect(self._on_row_selected)
+        tab_all.table.horizontalHeader().filterRequested.connect(self._on_column_filter_requested)
 
         for bdd in self.enabled_bdds:
             tab = MainTab(self)
             self.tab_widgets_by_name[bdd] = tab
             self.tabs.addTab(tab, bdd)
             tab.rowSelected.connect(self._on_row_selected)
+            tab.table.horizontalHeader().filterRequested.connect(self._on_column_filter_requested)
 
+        self.tabs.currentChanged.connect(self._on_tab_changed)
         return self.tabs
 
     # ── Status bar ───────────────────────────────────────────────────────────
@@ -1060,10 +1203,22 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         return self._normalize_requirement_code(a) == self._normalize_requirement_code(b)
 
     def _is_not_applicable(self, docs: list[dict], code: str) -> bool:
-        for doc in docs:
-            for na_code in (doc.get("not_applicable_codes") or []):
-                if self._code_matches(na_code, code):
-                    return True
+        """Statut N/A du code selon le DERNIER enregistrement le mentionnant.
+
+        On ne doit pas cumuler l'historique : si une exigence a été marquée
+        N/A un jour puis repassée Applicable ensuite (avec ou sans document),
+        c'est ce dernier état qui doit primer, pas le premier historique
+        trouvé. On parcourt donc les documents du plus récent au plus ancien
+        et on s'arrête au premier qui mentionne ce code, dans un sens ou
+        l'autre.
+        """
+        for doc in sorted(docs, key=lambda d: d.get("uploaded_at", ""), reverse=True):
+            req_codes = doc.get("requirement_codes") or []
+            if any(self._code_matches(c, code) for c in req_codes):
+                return False
+            na_codes = doc.get("not_applicable_codes") or []
+            if any(self._code_matches(c, code) for c in na_codes):
+                return True
         return False
 
     def _doc_applies_to_type(self, doc: dict, justif_type: str) -> bool:
@@ -1169,9 +1324,10 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             row_meta[key] = {
                 "label":        r.get("label", ""),
                 "order_number": r.get("order_number", ""),
+                "mnp":          r.get("mnp", ""),
             }
 
-        CE_CODES  = ["2006/42/UE", "2011/65/UE", "2014/30/UE", "2014/68/UE", "AUTRES"]
+        CE_CODES  = ["2006/42/UE", "2011/65/UE", "2014/30/UE", "2014/68/UE"]
         DPE_CODES = [
             "2011/65/UE", "2012/19/UE", "2006/66/CE", "1907/2006",
             "2019/1021", "1005/2009", "517/2014", "2017/852",
@@ -1199,6 +1355,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
                     "reference":        reference,
                     "label":            meta.get("label", ""),
                     "order_number":     meta.get("order_number", ""),
+                    "mnp":              meta.get("mnp", ""),
                     "type":             justif_type,
                     "documents":        doc_count,
                     "documents_db":     len(docs),
@@ -1225,11 +1382,26 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         all_vals = set(self._get_column_values(self._all_rows_cache, key))
         return set(allowed) != all_vals
 
+    _COL_TO_FILTER = {
+        0: ("supplier",   "Filtrer les fournisseurs"),
+        1: ("reference",  "Filtrer les références"),
+        2: ("label",      "Filtrer les libellés"),
+        5: ("type",       "Filtrer les types"),
+        6: ("completion", "Filtrer la complétude"),
+    }
+
+    def _on_column_filter_requested(self, col: int):
+        if col in self._COL_TO_FILTER:
+            key, title = self._COL_TO_FILTER[col]
+            self._open_column_filter(key, title)
+
     def _update_filter_chips(self):
-        self.chip_supplier.set_active(self._is_filter_active("supplier"))
-        self.chip_reference.set_active(self._is_filter_active("reference"))
-        self.chip_type.set_active(self._is_filter_active("type"))
-        self.chip_completion.set_active(self._is_filter_active("completion"))
+        col_key_map = {0: "supplier", 1: "reference", 2: "label", 5: "type", 6: "completion"}
+        for tab in self.tab_widgets_by_name.values():
+            hdr = tab.table.horizontalHeader()
+            if isinstance(hdr, FilterableHeader):
+                for c, k in col_key_map.items():
+                    hdr.set_active(c, self._is_filter_active(k))
 
     def _update_kpis(self, rows: list[dict]):
         def avg_pct(lst): return round(
@@ -1382,7 +1554,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             self.column_filters[key] = None if checked == set(values) else checked
             self._load_table(rebuild_cache=False)
 
-    def _open_upload_from_selection(self):
+    def _open_upload_from_selection(self, mode: str = "import"):
         name = self.tabs.tabText(self.tabs.currentIndex())
         tab  = self.tab_widgets_by_name.get(name)
         if not tab:
@@ -1390,7 +1562,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         selected = tab.selected_rows_data()
         if not selected:
             QtWidgets.QMessageBox.information(
-                self, "Import", "Sélectionne au moins une ligne du tableau."
+                self, "Sélection", "Sélectionne au moins une ligne du tableau."
             )
             return
         types = {r["type"] for r in selected}
@@ -1400,6 +1572,15 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
                 "La sélection multiple doit contenir un seul type de justificatif."
             )
             return
+
+        if mode == "applicability" and "CECC" in types:
+            QtWidgets.QMessageBox.information(
+                self, "Applicabilité",
+                "La gestion de l'applicabilité n'est pas disponible pour les justificatifs CECC. "
+                "Utilise «Importer un document» pour ce type."
+            )
+            return
+
         first = selected[0]
         dlg = UploadDocumentDialog(
             project_dir=self.project_dir,
@@ -1408,6 +1589,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             preset_justification_type=first["type"],
             batch_targets=[{"supplier": r["supplier"], "reference": r["reference"], "type": r["type"]}
                            for r in selected],
+            mode=mode,
             parent=self,
         )
         dlg.documentSaved.connect(self._reload_after_import)

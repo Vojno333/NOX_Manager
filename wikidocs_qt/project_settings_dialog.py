@@ -32,8 +32,8 @@ class ProjectSettingsDialog(QtWidgets.QDialog):
         rows_group = QtWidgets.QGroupBox("Lignes du projet", self)
         rows_layout = QtWidgets.QVBoxLayout(rows_group)
 
-        self.table = QtWidgets.QTableWidget(0, 2, self)
-        self.table.setHorizontalHeaderLabels(["Fournisseur", "Référence"])
+        self.table = QtWidgets.QTableWidget(0, 3, self)
+        self.table.setHorizontalHeaderLabels(["Fournisseur", "Référence", "MNP"])
         self.table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
@@ -67,8 +67,21 @@ class ProjectSettingsDialog(QtWidgets.QDialog):
         )
         references_layout.addWidget(self.references_edit)
 
+        mnp_group = QtWidgets.QGroupBox("MNP", self)
+        mnp_layout = QtWidgets.QVBoxLayout(mnp_group)
+        self.mnp_edit = QtWidgets.QPlainTextEdit(self)
+        self.mnp_edit.setPlaceholderText(
+            "Une ligne par MNP\n\n"
+            "Ex.:\n"
+            "MNP-001\n"
+            "MNP-002\n"
+            "MNP-003"
+        )
+        mnp_layout.addWidget(self.mnp_edit)
+
         bulk_layout.addWidget(suppliers_group, 1)
         bulk_layout.addWidget(references_group, 1)
+        bulk_layout.addWidget(mnp_group, 1)
 
         rows_layout.addWidget(bulk_group)
 
@@ -102,15 +115,20 @@ class ProjectSettingsDialog(QtWidgets.QDialog):
             cb.setChecked(livrable in enabled)
 
         for row in self.project_data.get("rows", []):
-            self._append_table_row(row.get("supplier", ""), row.get("reference", ""))
+            self._append_table_row(
+                row.get("supplier", ""),
+                row.get("reference", ""),
+                row.get("mnp", ""),
+            )
 
-    def _append_table_row(self, supplier: str, reference: str):
+    def _append_table_row(self, supplier: str, reference: str, mnp: str = ""):
         row = self.table.rowCount()
         self.table.insertRow(row)
         self.table.setItem(row, 0, QtWidgets.QTableWidgetItem(supplier))
         self.table.setItem(row, 1, QtWidgets.QTableWidgetItem(reference))
+        self.table.setItem(row, 2, QtWidgets.QTableWidgetItem(mnp))
 
-    def _parse_bulk_rows(self) -> list[tuple[str, str]]:
+    def _parse_bulk_rows(self) -> list[tuple[str, str, str]]:
         suppliers = [
             line.strip()
             for line in self.suppliers_edit.toPlainText().splitlines()
@@ -123,15 +141,22 @@ class ProjectSettingsDialog(QtWidgets.QDialog):
             if line.strip()
         ]
 
-        max_len = max(len(suppliers), len(references), 0)
-        rows: list[tuple[str, str]] = []
+        mnps = [
+            line.strip()
+            for line in self.mnp_edit.toPlainText().splitlines()
+            if line.strip()
+        ]
+
+        max_len = max(len(suppliers), len(references), len(mnps), 0)
+        rows: list[tuple[str, str, str]] = []
 
         for i in range(max_len):
             supplier = suppliers[i] if i < len(suppliers) else ""
             reference = references[i] if i < len(references) else ""
+            mnp = mnps[i] if i < len(mnps) else ""
 
             if supplier:
-                rows.append((supplier, reference))
+                rows.append((supplier, reference, mnp))
 
         return rows
 
@@ -174,16 +199,17 @@ class ProjectSettingsDialog(QtWidgets.QDialog):
                 existing.add((supplier, reference))
 
         added_count = 0
-        for supplier, reference in rows:
+        for supplier, reference, mnp in rows:
             key = (supplier, reference)
             if key in existing:
                 continue
             existing.add(key)
-            self._append_table_row(supplier, reference)
+            self._append_table_row(supplier, reference, mnp)
             added_count += 1
 
         self.suppliers_edit.clear()
         self.references_edit.clear()
+        self.mnp_edit.clear()
 
         QtWidgets.QMessageBox.information(
             self,
@@ -218,6 +244,7 @@ class ProjectSettingsDialog(QtWidgets.QDialog):
         for row in range(self.table.rowCount()):
             supplier = self.table.item(row, 0).text().strip() if self.table.item(row, 0) else ""
             reference = self.table.item(row, 1).text().strip() if self.table.item(row, 1) else ""
+            mnp = self.table.item(row, 2).text().strip() if self.table.item(row, 2) else ""
 
             if not supplier:
                 continue
@@ -230,6 +257,7 @@ class ProjectSettingsDialog(QtWidgets.QDialog):
             rows.append({
                 "supplier": supplier,
                 "reference": reference,
+                "mnp": mnp,
             })
 
         return rows

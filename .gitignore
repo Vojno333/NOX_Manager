@@ -28,3 +28,14 @@ desktop.ini
 # IDE
 .vscode/
 .idea/
+
+# Obsidian (état de l'interface, propre à chaque poste)
+docs/.obsidian/workspace*.json
+docs/.obsidian/cache
+docs/.trash/
+
+# Claude Code (réglages locaux)
+.claude/settings.local.json
+
+# Fichiers temporaires Office
+~$*

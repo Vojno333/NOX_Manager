@@ -16,6 +16,7 @@ from .document_rules import (
 )
 from .project_manager import get_project_file_path
 from .metadata_db import insert_uploaded_document, get_latest_cecc_fields, get_uploaded_documents
+from .window_geometry import fit_and_center
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -564,9 +565,12 @@ class RequirementRow(QtWidgets.QFrame):
         lay.setContentsMargins(16, 0, 16, 0)
         lay.setSpacing(12)
 
-        # Row checkbox (left)
+        # Row checkbox (left) — coche « ce document couvre cette exigence »
+        # (utilisé uniquement en mode Import, sans effet sur l'applicabilité)
         self._check = QtWidgets.QCheckBox(self)
         self._check.setObjectName("rowCheck")
+        self._check.setToolTip("Ce document couvre cette exigence")
+        self._check.setEnabled(False)
         self._check.stateChanged.connect(lambda: self.toggled.emit())
 
         # Name
@@ -586,7 +590,7 @@ class RequirementRow(QtWidgets.QFrame):
             "Non défini : à renseigner\n"
             "Applicable : couvert par ce justificatif"
         )
-        self._toggle.stateChanged.connect(lambda _s: self.toggled.emit())
+        self._toggle.stateChanged.connect(self._on_toggle_state_changed)
 
         lay.addWidget(self._check)
         lay.addWidget(name_lbl)
@@ -628,6 +632,26 @@ class RequirementRow(QtWidgets.QFrame):
 
     def set_row_checked(self, v: bool):
         self._check.setChecked(v)
+
+    def set_checkbox_visible(self, visible: bool):
+        self._check.setVisible(visible)
+
+    def _on_toggle_state_changed(self, state: int):
+        """Synchronise la case « document couvre cette exigence » avec l'applicabilité.
+
+        La case n'a de sens que pour une exigence Applicable : elle est
+        désactivée et décochée sinon. Elle n'est PAS cochée automatiquement :
+        c'est cette case (et elle seule) qui détermine si un document est
+        exigé au moment de l'enregistrement.
+        """
+        if state == 2:  # Applicable
+            self._check.setEnabled(True)
+        else:
+            self._check.blockSignals(True)
+            self._check.setChecked(False)
+            self._check.blockSignals(False)
+            self._check.setEnabled(False)
+        self.toggled.emit()
 
     def matches(self, text: str) -> bool:
         return text.lower() in self._code.lower()
@@ -761,24 +785,16 @@ class CEPage(QtWidgets.QWidget):
         scroll.setWidget(rows_w)
         lay.addWidget(scroll, 1)
 
-        # ── "Autres" precision + final name ──
+        # ── Aperçu du nom final ──
         bottom = QtWidgets.QWidget(self)
         bottom.setStyleSheet("background:#ffffff; border-top: 1px solid #e5e7eb;")
-        bot_lay = QtWidgets.QVBoxLayout(bottom)
-        bot_lay.setContentsMargins(20, 12, 20, 12)
-        bot_lay.setSpacing(6)
-
-        autres_lbl = QtWidgets.QLabel("Précision Autres (optionnel)", bottom)
-        autres_lbl.setObjectName("fieldLabelOpt")
-        self._autres_edit = QtWidgets.QLineEdit(bottom)
-        self._autres_edit.setPlaceholderText('Préciser si "Autres" est coché')
-        self._autres_edit.textChanged.connect(self.changed.emit)
+        bot_lay = QtWidgets.QHBoxLayout(bottom)
+        bot_lay.setContentsMargins(20, 8, 20, 8)
+        bot_lay.setSpacing(8)
 
         self._preview_lbl = QtWidgets.QLabel("Nom final : —", bottom)
         self._preview_lbl.setObjectName("previewLabel")
-
-        bot_lay.addWidget(autres_lbl)
-        bot_lay.addWidget(self._autres_edit)
+        self._preview_lbl.setStyleSheet("font-size:11px; color:#6b7280; padding:0;")
         bot_lay.addWidget(self._preview_lbl)
         lay.addWidget(bottom)
 
@@ -806,19 +822,26 @@ class CEPage(QtWidgets.QWidget):
     def set_preview(self, text: str):
         self._preview_lbl.setText(f"Nom final : {text}")
 
-    def get_autres_text(self) -> str:
-        return self._autres_edit.text().strip()
-
     def selected_requirements(self) -> tuple[list[str], list[str]]:
         codes, labels = [], []
         for row in self._req_rows:
             if row.is_applicable():
                 codes.append(row.code)
-                label = row.code
-                if row.code == "Autres" and self.get_autres_text():
-                    label = f"Autres : {self.get_autres_text()}"
-                labels.append(label)
+                labels.append(row.code)
         return codes, labels
+
+    def checked_applicable_requirements(self) -> tuple[list[str], list[str]]:
+        """Exigences Applicable ET cochées (couvertes par le document importé)."""
+        codes, labels = [], []
+        for row in self._req_rows:
+            if row.is_applicable() and row.is_row_checked():
+                codes.append(row.code)
+                labels.append(row.code)
+        return codes, labels
+
+    def set_checkboxes_visible(self, visible: bool):
+        for row in self._req_rows:
+            row.set_checkbox_visible(visible)
 
     # ── Private ───────────────────────────────────────────────────────────────
 
@@ -941,6 +964,19 @@ class DPEPage(QtWidgets.QWidget):
                 codes.append(row.code)
                 labels.append(row.code)
         return codes, labels
+
+    def checked_applicable_requirements(self) -> tuple[list[str], list[str]]:
+        """Exigences Applicable ET cochées (couvertes par le document importé)."""
+        codes, labels = [], []
+        for row in self._req_rows:
+            if row.is_applicable() and row.is_row_checked():
+                codes.append(row.code)
+                labels.append(row.code)
+        return codes, labels
+
+    def set_checkboxes_visible(self, visible: bool):
+        for row in self._req_rows:
+            row.set_checkbox_visible(visible)
 
     # ── Private ───────────────────────────────────────────────────────────────
 
@@ -1195,13 +1231,17 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         reference: str,
         preset_justification_type: str | None = None,
         batch_targets: list[dict] | None = None,
+        mode: str = "import",
         parent=None,
     ):
+        """*mode* : "import" (import de document, applicabilité modifiable)
+        ou "applicability" (gestion de l'applicabilité seule, sans document)."""
         super().__init__(parent)
         self.project_dir = project_dir
         self.supplier = supplier
         self.reference = reference
         self.preset_justification_type = preset_justification_type
+        self.mode = mode if mode in ("import", "applicability") else "import"
         self.selected_file: Path | None = None
         self.batch_targets = batch_targets or [
             {"supplier": supplier, "reference": reference,
@@ -1215,17 +1255,33 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         self._prefill_existing_applicability()
         self._update_form_visibility()
         self._update_preview()
+        # Calculé après la construction de l'UI (polices réelles, contenu
+        # réel) pour que rien ne soit rogné : le pied de page (boutons) et
+        # le champ « Nom final » doivent toujours rester visibles, jamais
+        # écrasés par la hauteur imposée à la zone des exigences. `min_h`
+        # est le strict minimum requis (plancher dur, protège le pied de
+        # page) ; la hauteur visée ajoute une marge généreuse dédiée à la
+        # zone des exigences (seule zone avec stretch=1, elle absorbe tout
+        # ce surplus) pour qu'elle reste la zone dominante de la page.
+        self.layout().activate()
+        needed = self.layout().minimumSize()
+        fit_and_center(
+            self,
+            max(860, needed.width()),
+            max(900, needed.height() + 260),
+            min_w=needed.width(),
+            min_h=needed.height(),
+        )
 
     # ── Window setup ──────────────────────────────────────────────────────────
 
     def _setup_window(self):
         jtype = self.preset_justification_type or ""
+        action = "Gérer l'applicabilité" if self.mode == "applicability" else "Importer un justificatif"
         if jtype:
-            self.setWindowTitle(f"Importer un justificatif {jtype}")
+            self.setWindowTitle(f"{action} {jtype}")
         else:
-            self.setWindowTitle("Importer un justificatif")
-        self.resize(860, 680)
-        self.setMinimumSize(860, 680)
+            self.setWindowTitle(action)
         self.setStyleSheet(STYLESHEET)
 
     def _prefill_existing_applicability(self):
@@ -1239,20 +1295,17 @@ class UploadDocumentDialog(QtWidgets.QDialog):
             return
 
         current_type = self._current_type()
-        latest_doc = None
 
-        for d in docs:
-            if str(d.get("supplier", "")) != str(self.supplier):
-                continue
-            if str(d.get("reference", "")) != str(self.reference):
-                continue
-            if str(d.get("source_justification_type", "")).upper() != current_type:
-                continue
-
-            latest_doc = d
-
-        if not latest_doc:
+        matching = [
+            d for d in docs
+            if str(d.get("supplier", "")) == str(self.supplier)
+            and str(d.get("reference", "")) == str(self.reference)
+            and str(d.get("source_justification_type", "")).upper() == current_type
+        ]
+        if not matching:
             return
+
+        latest_doc = max(matching, key=lambda d: d.get("uploaded_at", ""))
 
         na_codes = latest_doc.get("not_applicable_codes", [])
 
@@ -1272,27 +1325,17 @@ class UploadDocumentDialog(QtWidgets.QDialog):
 
     def _build_ui(self):
         window_layout = QtWidgets.QVBoxLayout(self)
-        window_layout.setContentsMargins(0, 0, 0, 0)
-        window_layout.setSpacing(0)
+        window_layout.setContentsMargins(24, 16, 24, 16)
+        window_layout.setSpacing(12)
 
-        scroll = QtWidgets.QScrollArea(self)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QtWidgets.QFrame.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-
-        content = QtWidgets.QWidget()
-        root = QtWidgets.QVBoxLayout(content)
-        root.setContentsMargins(24, 16, 24, 16)
-        root.setSpacing(12)
-
-        root.addWidget(self._build_header())
-        root.addWidget(self._build_context_card())
-        root.addWidget(self._build_file_card())
-        root.addWidget(self._build_specifics_area())
-        root.addLayout(self._build_footer())
-
-        scroll.setWidget(content)
-        window_layout.addWidget(scroll)
+        window_layout.addWidget(self._build_header())
+        window_layout.addWidget(self._build_context_card())
+        # Zone centrale : la liste des exigences occupe tout l'espace
+        # vertical restant (elle gère son propre défilement interne).
+        window_layout.addWidget(self._build_specifics_area(), 1)
+        self._file_card = self._build_file_card()
+        window_layout.addWidget(self._file_card)
+        window_layout.addLayout(self._build_footer())
 
     # ── Header ────────────────────────────────────────────────────────────────
 
@@ -1310,16 +1353,20 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         text_col.setSpacing(2)
 
         jtype = self.preset_justification_type or ""
-        title_txt = f"Importer un justificatif {jtype}".strip()
+        action = "Gérer l'applicabilité" if self.mode == "applicability" else "Importer un justificatif"
+        title_txt = f"{action} {jtype}".strip()
         title = QtWidgets.QLabel(title_txt, w)
         title.setObjectName("dialogTitle")
 
-        subtitles = {
-            "CE":   "Importez un document pour répondre aux exigences CE.",
-            "CECC": "Importez un document CECC pour la référence sélectionnée.",
-            "DPE":  "Importez un document et indiquez les exigences qu'il couvre.",
-        }
-        sub_txt = subtitles.get(jtype, "Importez un justificatif pour ce projet.")
+        if self.mode == "applicability":
+            sub_txt = "Indiquez l'applicabilité de chaque exigence, sans fournir de document."
+        else:
+            subtitles = {
+                "CE":   "Importez un document et cochez les exigences CE qu'il couvre.",
+                "CECC": "Importez un document CECC pour la référence sélectionnée.",
+                "DPE":  "Importez un document et cochez les exigences qu'il couvre.",
+            }
+            sub_txt = subtitles.get(jtype, "Importez un justificatif pour ce projet.")
         sub = QtWidgets.QLabel(sub_txt, w)
         sub.setObjectName("dialogSubtitle")
 
@@ -1374,15 +1421,22 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         outer.setContentsMargins(20, 14, 20, 16)
         outer.setSpacing(10)
 
-        title = QtWidgets.QLabel("Informations du justificatif", card)
+        title = QtWidgets.QLabel(
+            "Applicabilité uniquement (aucun document)"
+            if self.mode == "applicability"
+            else "Informations du justificatif",
+            card,
+        )
         title.setObjectName("sectionTitle")
         outer.addWidget(title)
 
         cols = QtWidgets.QHBoxLayout()
         cols.setSpacing(20)
 
-        # Left: drop zone
-        left_col = QtWidgets.QVBoxLayout()
+        # Left: drop zone (masqué en mode Applicabilité)
+        self._file_left_container = QtWidgets.QWidget(card)
+        left_col = QtWidgets.QVBoxLayout(self._file_left_container)
+        left_col.setContentsMargins(0, 0, 0, 0)
         left_col.setSpacing(6)
         file_lbl_row = QtWidgets.QHBoxLayout()
         file_lbl_row.setSpacing(3)
@@ -1404,7 +1458,7 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         fmt_lbl.setObjectName("formatHint")
         left_col.addWidget(fmt_lbl)
 
-        cols.addLayout(left_col, 2)
+        cols.addWidget(self._file_left_container, 2)
 
         # Right: type + nom final
         right_col = QtWidgets.QVBoxLayout()
@@ -1412,24 +1466,43 @@ class UploadDocumentDialog(QtWidgets.QDialog):
 
         type_col = _field_col("Type de justificatif", required=True)
         self.type_combo = QtWidgets.QComboBox(card)
-        self.type_combo.addItems(JUSTIFICATION_TYPES)
+        type_choices = [t for t in JUSTIFICATION_TYPES if t != "CECC"] if self.mode == "applicability" else list(JUSTIFICATION_TYPES)
+        self.type_combo.addItems(type_choices)
         self.type_combo.currentTextChanged.connect(lambda _text: self._on_type_changed())
         type_col.addWidget(self.type_combo)
         right_col.addLayout(type_col)
 
-        name_col = _field_col("Nom final", optional=True)
+        self._name_field_container = QtWidgets.QWidget(card)
+        name_col = QtWidgets.QVBoxLayout(self._name_field_container)
+        name_col.setContentsMargins(0, 0, 0, 0)
+        name_col.setSpacing(5)
+        name_lbl_row = QtWidgets.QHBoxLayout()
+        name_lbl_row.setSpacing(3)
+        nl = QtWidgets.QLabel("Nom final", card)
+        nl.setObjectName("fieldLabelOpt")
+        no = QtWidgets.QLabel(" (optionnel)", card)
+        no.setObjectName("hintLabel")
+        name_lbl_row.addWidget(nl)
+        name_lbl_row.addWidget(no)
+        name_lbl_row.addStretch(1)
+        name_col.addLayout(name_lbl_row)
+
         self._final_name_edit = QtWidgets.QLineEdit(card)
         jtype = self.preset_justification_type or "CE"
         self._final_name_edit.setPlaceholderText(
-            f"Ex. {jtype}_2024_{self.supplier or 'Fournisseur'}_Ref1"
+            f"Auto : {jtype}_{self.supplier or 'Fournisseur'}_{self.reference or 'Reference'}"
         )
-
         name_col.addWidget(self._final_name_edit)
-        right_col.addLayout(name_col)
+        right_col.addWidget(self._name_field_container)
         right_col.addStretch(1)
 
         cols.addLayout(right_col, 1)
         outer.addLayout(cols)
+
+        if self.mode == "applicability":
+            self._file_left_container.setVisible(False)
+            self._name_field_container.setVisible(False)
+
         return card
 
     # ── Specifics area (stacked: CE / CECC / DPE) ────────────────────────────
@@ -1437,6 +1510,14 @@ class UploadDocumentDialog(QtWidgets.QDialog):
     def _build_specifics_area(self) -> QtWidgets.QFrame:
         self._spec_card = QtWidgets.QFrame(self)
         self._spec_card.setObjectName("sectionCard")
+        # Plancher volontairement modeste : la zone des exigences est déjà
+        # prioritaire (stretch=1 dans la mise en page) et devient la zone
+        # dominante dès qu'il y a de la place. Ce plancher ne sert qu'à
+        # garantir l'en-tête + quelques lignes visibles ; il ne doit jamais
+        # pousser le pied de page (boutons) ou la carte fichier hors champ
+        # sur un écran plus petit — c'est elle qui doit rétrécir (avec son
+        # propre défilement interne), jamais l'inverse.
+        self._spec_card.setMinimumHeight(160)
         spec_lay = QtWidgets.QVBoxLayout(self._spec_card)
         spec_lay.setContentsMargins(0, 0, 0, 0)
         spec_lay.setSpacing(0)
@@ -1454,6 +1535,10 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         self._stack.addWidget(self._ce_page)    # index 0
         self._stack.addWidget(self._cecc_page)  # index 1
         self._stack.addWidget(self._dpe_page)   # index 2
+
+        checkboxes_visible = self.mode == "import"
+        self._ce_page.set_checkboxes_visible(checkboxes_visible)
+        self._dpe_page.set_checkboxes_visible(checkboxes_visible)
 
         spec_lay.addWidget(self._stack)
         return self._spec_card
@@ -1534,13 +1619,27 @@ class UploadDocumentDialog(QtWidgets.QDialog):
     def _current_type(self) -> str:
         return self.type_combo.currentText().strip().upper()
 
-    def _build_final_filename(self) -> str:
+    @staticmethod
+    def _safe_name_part(value: str) -> str:
+        forbidden = '<>:"/\\|?*'
+        cleaned = "".join("_" if c in forbidden else c for c in str(value or "").strip())
+        cleaned = " ".join(cleaned.split())
+        return cleaned.replace(" ", "_")
+
+    def _auto_name(self, supplier: str | None = None, reference: str | None = None) -> str:
+        """Nommage automatique : Type_Fournisseur_Reference."""
+        sup = supplier if supplier is not None else self.supplier
+        ref = reference if reference is not None else self.reference
+        parts = [self._current_type(), self._safe_name_part(sup), self._safe_name_part(ref)]
+        return "_".join(p for p in parts if p)
+
+    def _build_final_filename(self, supplier: str | None = None, reference: str | None = None) -> str:
         if not self.selected_file:
             return "—"
         custom = self._final_name_edit.text().strip()
         if custom:
             return custom if "." in custom else custom + self.selected_file.suffix
-        return self.selected_file.name
+        return self._auto_name(supplier, reference) + self.selected_file.suffix
 
     def _update_preview(self):
         name = self._build_final_filename()
@@ -1577,6 +1676,28 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         return data
 
     def _selected_requirements(self) -> tuple[list[str], list[str]]:
+        """Exigences à enregistrer pour ce document.
+
+        Mode "applicability" : toutes les exigences Applicable (pas de document).
+        Mode "import" : uniquement les exigences Applicable ET cochées
+        (« couvertes » par le document en cours d'import).
+        """
+        t = self._current_type()
+        if self.mode == "applicability":
+            if t == "CE":
+                return self._selected_ce_requirements()
+            if t == "DPE":
+                return self._selected_dpe_requirements()
+            return [], []
+
+        if t == "CE":
+            return self._ce_page.checked_applicable_requirements()
+        if t == "DPE":
+            return self._dpe_page.checked_applicable_requirements()
+        return [], []
+
+    def _all_applicable_requirements(self) -> tuple[list[str], list[str]]:
+        """Toutes les exigences Applicable, sans filtrer sur la case cochée."""
         t = self._current_type()
         if t == "CE":
             return self._selected_ce_requirements()
@@ -1622,39 +1743,56 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         if current not in self._enabled_bdds():
             return False, f"Le livrable {current} n'est pas activé sur ce projet."
 
-        codes, _ = self._selected_requirements()
-        not_applicable_codes, _ = self._not_applicable_requirements()
-
-        all_not_applicable = (
-            current in ("CE", "DPE")
-            and len(codes) == 0
-            and len(not_applicable_codes) > 0
-        )
-
         if current in ("CE", "DPE"):
-            # Compter aussi les "Non défini" pour avertir l'utilisateur
-            undefined_count = 0
-            if current == "CE":
-                undefined_count = sum(1 for r in self._ce_page._req_rows if r.is_undefined())
-            elif current == "DPE":
-                undefined_count = sum(1 for r in self._dpe_page._req_rows if r.is_undefined())
+            if self.mode == "applicability":
+                # Aucun document requis : on enregistre l'état d'applicabilité
+                # actuel, même partiel. Les exigences encore «Non défini»
+                # restent simplement inchangées.
+                return True, ""
 
-            if not codes and not all_not_applicable:
+            # Mode import : le document n'est requis QUE si au moins une
+            # exigence a été cochée. Si seule l'applicabilité est renseignée
+            # (aucune case cochée), aucun document n'est nécessaire et la
+            # sauvegarde peut être partielle.
+            codes, _ = self._selected_requirements()
+
+            if codes and not self.selected_file:
                 return False, (
-                    f"Pour un justificatif {current}, définissez l'applicabilité de chaque exigence "
-                    f"(au moins une «Applicable» ou toutes à «N/A»)."
+                    "Un document doit être fourni : au moins une exigence "
+                    "applicable est cochée."
                 )
 
-            if undefined_count > 0:
+            if self.selected_file and not codes:
                 return False, (
-                    f"{undefined_count} exigence(s) sont encore «Non défini(es)». "
-                    f"Veuillez indiquer «Applicable» ou «N/A» pour chacune."
+                    "Un fichier a été sélectionné mais aucune exigence n'est cochée. "
+                    "Coche au moins une exigence «Applicable» pour l'associer à ce "
+                    "document, ou retire le fichier pour n'enregistrer que "
+                    "l'applicabilité."
                 )
 
-            if not self.selected_file and not all_not_applicable:
-                return False, "Merci de choisir un fichier."
+            if self.selected_file and codes:
+                # On importe réellement un document pour des exigences
+                # précises : celles-ci (et le reste du tableau) doivent être
+                # clairement tranchées avant de finaliser l'import.
+                undefined_count = 0
+                if current == "CE":
+                    undefined_count = sum(1 for r in self._ce_page._req_rows if r.is_undefined())
+                elif current == "DPE":
+                    undefined_count = sum(1 for r in self._dpe_page._req_rows if r.is_undefined())
+
+                if undefined_count > 0:
+                    return False, (
+                        f"{undefined_count} exigence(s) sont encore «Non défini(es)». "
+                        f"Veuillez indiquer «Applicable» ou «N/A» pour chacune avant "
+                        f"d'importer ce document."
+                    )
 
         elif current == "CECC":
+            if self.mode == "applicability":
+                return False, (
+                    "La gestion de l'applicabilité n'est pas disponible pour les justificatifs CECC."
+                )
+
             if not self.selected_file or not self.selected_file.exists():
                 return False, "Merci de choisir un fichier."
 
@@ -1686,7 +1824,8 @@ class UploadDocumentDialog(QtWidgets.QDialog):
     def _save_document(self):
         ok, msg = self._validate()
         if not ok:
-            QtWidgets.QMessageBox.warning(self, "Import", msg)
+            title = "Applicabilité" if self.mode == "applicability" else "Import"
+            QtWidgets.QMessageBox.warning(self, title, msg)
             return
 
         source_type = self._current_type()
@@ -1695,12 +1834,17 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         not_applicable_codes, not_applicable_labels = self._not_applicable_requirements()
         cecc_fields = self._cecc_fields_data() if source_type == "CECC" else {}
 
-        no_document_required = (
-            source_type in ("CE", "DPE")
-            and not self.selected_file
-            and len(codes) == 0
-            and len(not_applicable_codes) > 0
+        # En mode import, si aucune exigence n'est cochée, il n'y a pas de
+        # document à associer : seule l'applicabilité est enregistrée.
+        applicability_only = self.mode == "applicability" or (
+            self.mode == "import" and source_type in ("CE", "DPE") and not codes
         )
+
+        if applicability_only and self.mode == "import":
+            # On n'a pas filtré sur la case cochée (aucune ne l'est ici) :
+            # on enregistre toutes les exigences actuellement Applicable,
+            # comme le ferait le bouton «Applicabilité».
+            codes, labels = self._all_applicable_requirements()
 
         try:
             saved = 0
@@ -1709,7 +1853,8 @@ class UploadDocumentDialog(QtWidgets.QDialog):
                 sup = str(target["supplier"])
                 ref = str(target["reference"])
 
-                if no_document_required:
+                if applicability_only:
+                    # Aucun document : on enregistre uniquement l'état d'applicabilité.
                     insert_uploaded_document(
                         project_dir=self.project_dir,
                         supplier=sup,
@@ -1727,7 +1872,7 @@ class UploadDocumentDialog(QtWidgets.QDialog):
                         uploaded_at=datetime.now().isoformat(),
                     )
                 else:
-                    final_name = self._build_final_filename()
+                    final_name = self._build_final_filename(sup, ref)
 
                     for tdir in self._target_folders_for(sup, ref):
                         tdir.mkdir(parents=True, exist_ok=True)
@@ -1755,11 +1900,18 @@ class UploadDocumentDialog(QtWidgets.QDialog):
 
             self.documentSaved.emit()
 
-            QtWidgets.QMessageBox.information(
-                self,
-                "Import terminé",
-                f"Les modifications ont été appliquées à {saved} ligne(s)."
-            )
+            if applicability_only:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Applicabilité enregistrée",
+                    f"L'applicabilité a été mise à jour pour {saved} ligne(s)."
+                )
+            else:
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Import terminé",
+                    f"Les modifications ont été appliquées à {saved} ligne(s)."
+                )
             self.accept()
 
         except Exception as e:

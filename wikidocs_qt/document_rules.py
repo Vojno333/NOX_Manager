@@ -22,7 +22,6 @@ CE_REQUIREMENTS = [
     ("2011/65/UE", "RoHS"),
     ("2014/30/UE", "Compatibilité électromagnétique EMC"),
     ("2014/68/UE", "Directive équipement sous préssion"),
-    ("AUTRES", "---"),
 ]
 
 CECC_FREE_FIELDS = [

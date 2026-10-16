@@ -1,0 +1,42 @@
+---
+tags: [nox, changelog]
+maj: 2026-09-21
+---
+
+↑ [[00 - Index]]
+
+# Changelog
+
+Vue « livraison » : ce que voit l'utilisateur, par version. Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/). Le détail du travail est dans [[Journal de dev]].
+
+Numérotation proposée : `MAJEUR.MINEUR.CORRECTIF` (ex. 1.1.0). Il n'existe pas encore de numéro de version dans le code (NOX-004 dans [[Backlog]]) : la version courante est appelée « v1 » par le premier commit.
+
+## [Non publié]
+
+### Ajouté
+- Fenêtres et dialogues centrés sur l'écran de la fenêtre parente et bornés à la taille disponible (`window_geometry.py`).
+- Icônes SVG DPE et UE dans le dashboard.
+- Réglages de projet : colonne et saisie en masse du **MNP** (`ProjectSettingsDialog`).
+- Icône et regroupement corrects de l'application dans la barre des tâches Windows.
+- Icône de l'application affichée aussi sur la fenêtre d'accueil, y compris dans la version compilée.
+
+### Modifié
+- Splash `flash.png` allégé (1,43 Mo → 58 Ko).
+- `AUTRES` retiré de la liste des exigences CE.
+- Accueil, dashboard et dialogues de projet/import retouchés (à détailler par l'auteur).
+
+### Corrigé
+- _(rien de consigné)_
+
+## [v1.0] : 2026-04-28 → 2026-04-30
+
+### Ajouté
+- Création de projet avec références fournisseur/référence, BDD CE / CECC / DPE activables.
+- Dashboard de suivi : KPI par BDD, filtres de colonnes, panneau de détail.
+- Import de justificatifs PDF/DOCX/XLSX, import en lot, copie dans l'arborescence du projet.
+- **Applicabilité tri-état** (N/A / Non défini / Applicable) pour CE et DPE.
+- Export vers les templates Excel `Template_BDD_*_N0X.xlsx` avec liens hypertexte et formules de synthèse.
+- Build Windows `NOX_Manager.exe` (PyInstaller, onedir, splash).
+
+### Modifié
+- Refonte de l'affichage du dashboard et amélioration du tableau (2026-04-30).

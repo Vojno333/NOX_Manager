@@ -9,6 +9,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from .project_manager import ProjectManager
 from .new_project_dialog import NewProjectDialog
 from .project_dashboard_window import ProjectDashboardWindow
+from .window_geometry import fit_and_center
+from .utils import human_size
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -373,8 +375,7 @@ class HomeWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NOX_Manager")
-        self.resize(1360, 860)
-        self.setMinimumSize(1100, 720)
+        fit_and_center(self, 1360, 860, min_w=1000, min_h=620)
         self.setStyleSheet(STYLESHEET)
 
         self.project_manager = ProjectManager()
@@ -732,16 +733,54 @@ class HomeWindow(QtWidgets.QMainWindow):
         self.info_stack.setCurrentIndex(0)
 
     def _show_project_info(self, data: dict):
+        project_dir = Path(data.get("path", "")) if data.get("path") else None
+        if project_dir and project_dir.exists():
+            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
+            try:
+                stats = self._compute_project_stats(project_dir)
+            finally:
+                QtWidgets.QApplication.restoreOverrideCursor()
+        else:
+            stats = {}
+
         self._row_created.set_value(
-            self._format_datetime(data.get("created_at", "")) or "—"
+            self._format_datetime(stats.get("created_at", "")) or "—"
         )
         self._row_opened.set_value(
             self._format_datetime(data.get("last_opened", "")) or "—"
         )
-        self._row_refs.set_value(str(data.get("references_count", "—")))
-        self._row_docs.set_value(str(data.get("documents_count", "—")))
-        self._row_size.set_value(data.get("size", "—"))
+        self._row_refs.set_value(str(stats.get("references_count", "—")))
+        self._row_docs.set_value(str(stats.get("documents_count", "—")))
+        self._row_size.set_value(stats.get("size", "—"))
         self.info_stack.setCurrentIndex(1)
+
+    def _compute_project_stats(self, project_dir: Path) -> dict:
+        """Infos calculées à la volée à partir du dossier projet (lu sur
+        disque, jamais mises en cache : reflètent toujours l'état réel)."""
+        stats: dict = {}
+
+        project_data = self.project_manager.load_project(project_dir)
+        stats["created_at"] = (project_data or {}).get("created_at", "")
+        stats["references_count"] = len((project_data or {}).get("rows", []) or [])
+
+        doc_count = 0
+        total_size = 0
+        try:
+            for f in project_dir.rglob("*"):
+                if not f.is_file():
+                    continue
+                try:
+                    total_size += f.stat().st_size
+                except OSError:
+                    continue
+                if "Documents" in f.parts:
+                    doc_count += 1
+        except OSError:
+            pass
+
+        stats["documents_count"] = doc_count
+        stats["size"] = human_size(total_size)
+        return stats
 
     # ── Actions ───────────────────────────────────────────────────────────────
 
