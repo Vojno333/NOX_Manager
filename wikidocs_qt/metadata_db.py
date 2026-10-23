@@ -42,7 +42,8 @@ def init_metadata_db(project_dir: Path) -> None:
                 relative_path TEXT NOT NULL,
                 uploaded_at TEXT NOT NULL,
                 not_applicable_codes_json TEXT NOT NULL DEFAULT '[]',
-                not_applicable_labels_json TEXT NOT NULL DEFAULT '[]'
+                not_applicable_labels_json TEXT NOT NULL DEFAULT '[]',
+                applicable_codes_json TEXT NOT NULL DEFAULT '[]'
             )
         """)
 
@@ -50,6 +51,7 @@ def init_metadata_db(project_dir: Path) -> None:
         for column_name in (
             "not_applicable_codes_json",
             "not_applicable_labels_json",
+            "applicable_codes_json",
         ):
             try:
                 conn.execute(
@@ -79,6 +81,7 @@ def insert_uploaded_document(
     uploaded_at: str,
     not_applicable_codes: list[str] | None = None,
     not_applicable_labels: list[str] | None = None,
+    applicable_codes: list[str] | None = None,
 ) -> None:
     conn = connect_metadata_db(project_dir)
     try:
@@ -96,9 +99,10 @@ def insert_uploaded_document(
                 relative_path,
                 uploaded_at,
                 not_applicable_codes_json,
-                not_applicable_labels_json
+                not_applicable_labels_json,
+                applicable_codes_json
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             supplier,
             reference,
@@ -113,6 +117,7 @@ def insert_uploaded_document(
             uploaded_at,
             json.dumps(not_applicable_codes or [], ensure_ascii=False),
             json.dumps(not_applicable_labels or [], ensure_ascii=False),
+            json.dumps(applicable_codes or [], ensure_ascii=False),
         ))
         conn.commit()
     finally:
@@ -137,7 +142,8 @@ def get_uploaded_documents(project_dir: Path) -> list[dict[str, Any]]:
                 relative_path,
                 uploaded_at,
                 not_applicable_codes_json,
-                not_applicable_labels_json
+                not_applicable_labels_json,
+                applicable_codes_json
             FROM uploaded_documents
             ORDER BY supplier, reference, uploaded_at DESC
         """)
@@ -159,6 +165,7 @@ def get_uploaded_documents(project_dir: Path) -> list[dict[str, Any]]:
                 "uploaded_at": row[11],
                 "not_applicable_codes": json.loads(row[12] or "[]"),
                 "not_applicable_labels": json.loads(row[13] or "[]"),
+                "applicable_codes": json.loads(row[14] or "[]"),
             })
 
         return rows

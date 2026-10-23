@@ -11,6 +11,7 @@ from openpyxl.worksheet.cell_range import CellRange
 
 from openpyxl import load_workbook
 
+from .document_rules import REQ_NA, code_matches, doc_has_file, normalize_requirement_code, requirement_state
 from .metadata_db import get_uploaded_documents
 from .project_manager import get_project_file_path
 
@@ -84,27 +85,17 @@ def _get_not_applicable_map(project_data: dict) -> dict:
 
 
 def _normalize_requirement_code(code: str) -> str:
-    code = str(code or "").strip()
-
-    if " — " in code:
-        code = code.split(" — ", 1)[0].strip()
-
-    if " | " in code:
-        code = code.split(" | ", 1)[0].strip()
-
-    return code
+    return normalize_requirement_code(code)
 
 
 def _code_matches(a: str, b: str) -> bool:
-    return _normalize_requirement_code(a) == _normalize_requirement_code(b)
+    return code_matches(a, b)
 
 
 def _is_not_applicable(docs: list[dict], requirement_code: str) -> bool:
-    for doc in docs:
-        for na_code in doc.get("not_applicable_codes", []) or []:
-            if _code_matches(na_code, requirement_code):
-                return True
-    return False
+    """N/A selon le DERNIER enregistrement mentionnant le code (même règle
+    que le dashboard) : une exigence repassée Applicable n'est plus N/A."""
+    return requirement_state(docs, requirement_code) == REQ_NA
 
 
 def _safe_output_name(template_type: str, dossier_number: str) -> str:
@@ -161,6 +152,9 @@ def _latest_doc_by_requirement(
     latest: dict[str, dict] = {}
 
     for doc in _sorted_docs(docs):
+        # Un enregistrement « applicabilité seule » n'a pas de fichier à lier.
+        if not doc_has_file(doc):
+            continue
         doc_codes = doc.get("requirement_codes", []) or []
 
         for expected_code in expected_codes:
@@ -480,7 +474,9 @@ def _fill_ce_sheet(ws, pairs, grouped_docs, project_dir, project_data):
 
     ce_column_map = {
         "2006/42/UE": "H",
+        "2014/35/UE": "I",
         "2011/65/UE": "J",
+        "2015/863": "K",    # alias RoHS : même contenu que J
         "2014/30/UE": "L",
         "2014/68/UE": "M",
         "AUTRES": "N",

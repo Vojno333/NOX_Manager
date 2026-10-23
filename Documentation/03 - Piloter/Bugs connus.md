@@ -1,6 +1,6 @@
 ---
 tags: [nox, bugs]
-maj: 2026-10-16
+maj: 2026-10-23
 ---
 
 ↑ [[00 - Index]]
@@ -12,7 +12,6 @@ Défauts relevés par **lecture du code** le 2026-09-21. Aucun n'a été reprodu
 | ID           | Gravité | Sujet                                                                         | Confiance  |
 | ------------ | ------- | ----------------------------------------------------------------------------- | ---------- |
 | [[#BUG-001]] | Haute   | Clés CECC incohérentes entre import, dashboard et export                      | Haute      |
-| [[#BUG-002]] | Haute   | N/A interprété différemment par l'export et le dashboard                      | Haute      |
 | [[#BUG-003]] | Moyenne | Statuts CECC proposés ≠ statuts comptés                                       | Haute      |
 | [[#BUG-005]] | Moyenne | Suppression de référence : base vidée, fichiers conservés et toujours comptés | Haute      |
 | [[#BUG-006]] | Basse   | Colonne MPN écrite deux fois dans l'export CECC                               | À vérifier |
@@ -32,14 +31,6 @@ Seules `manufacturer_doc`, `manufacturer_part_number`, `nom_cecc` et `cecc_class
 
 **Conséquences probables** : la complétion CECC reste à 0 % (aucun `status` lu), et les colonnes I, M, N, O, P de l'export CECC sortent vides.
 **Piste** : unifier autour de `CECC_FREE_FIELDS` (`document_rules.py`) comme unique source de clés ; prévoir une **migration de lecture** pour les bases existantes (accepter les anciennes clés). Voir NOX-010 dans [[Backlog]].
-
-## BUG-002
-**N/A : deux règles différentes.**
-- Dashboard (`_is_not_applicable`) : le **dernier** événement mentionnant le code gagne.
-- Export (`export_templates._is_not_applicable`) : **un** événement N/A dans tout l'historique suffit.
-
-Scénario : une exigence est marquée N/A, puis repassée « Applicable » avec un document. Le dashboard l'affiche applicable et couverte ; l'export écrit « N/A » dans la cellule et n'y met pas le lien.
-**Piste** : une seule fonction de résolution, dans un module sans Qt (voir [[Dette technique#DT-001]]).
 
 ## BUG-003
 **Statuts CECC.** L'import propose « A demander, Demandé, Relancé, Non conforme, Validé » ; les calculs ne connaissent que « Validé, Relancé, Non conforme, Estimation » (`CECC_STATUSES`). « A demander » et « Demandé » sont ignorés au dénominateur, et « Estimation » ne peut pas être saisi. À trancher avec le métier : quelle est la liste officielle ? (NOX-011 dans [[Backlog]]).

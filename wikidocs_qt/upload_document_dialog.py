@@ -13,6 +13,8 @@ from .document_rules import (
     CE_REQUIREMENTS,
     CECC_FREE_FIELDS,
     CECC_STATUSES,
+    is_rohs_code,
+    requirement_state,
 )
 from .project_manager import get_project_file_path
 from .metadata_db import insert_uploaded_document, get_latest_cecc_fields, get_uploaded_documents
@@ -780,6 +782,7 @@ class CEPage(QtWidgets.QWidget):
             row.toggled.connect(self.changed.emit)
             self._req_rows.append(row)
             self._rows_lay.addWidget(row)
+        self._link_rohs_rows()
 
         self._rows_lay.addStretch(1)
         scroll.setWidget(rows_w)
@@ -866,6 +869,21 @@ class CEPage(QtWidgets.QWidget):
             for row in self._req_rows
             if row.is_undefined()
         ]
+
+    def _link_rohs_rows(self):
+        """2011/65/UE et 2015/863 forment une seule exigence RoHS : l'état
+        d'applicabilité et la case « couvert » de l'une sont recopiés sur l'autre."""
+        linked = [r for r in self._req_rows if is_rohs_code(r.code)]
+        for row in linked:
+            others = [r for r in linked if r is not row]
+            # set_state / setChecked n'émettent rien si la valeur est déjà
+            # la bonne : pas de boucle infinie entre les lignes liées.
+            row._toggle.stateChanged.connect(
+                lambda state, o=others: [r.set_state(state) for r in o]
+            )
+            row._check.stateChanged.connect(
+                lambda _s, src=row, o=others: [r.set_row_checked(src.is_row_checked()) for r in o]
+            )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -1080,7 +1098,7 @@ class CECCPage(QtWidgets.QWidget):
                     w.currentTextChanged.connect(lambda _text: self.changed.emit())
                 else:
                     w = QtWidgets.QLineEdit()
-                    w.textChanged.connect(self.changed.emit)
+                    w.textChanged.connect(lambda _text: self.changed.emit())
 
                 self._edits[key] = w
                 col.addWidget(w)
@@ -1120,7 +1138,7 @@ class CECCPage(QtWidgets.QWidget):
             row_lay.addLayout(label_row)
 
             w = QtWidgets.QLineEdit()
-            w.textChanged.connect(self.changed.emit)
+            w.textChanged.connect(lambda _text: self.changed.emit())
 
             self._edits[key] = w
             row_lay.addWidget(w)
@@ -1286,40 +1304,30 @@ class UploadDocumentDialog(QtWidgets.QDialog):
 
     def _prefill_existing_applicability(self):
         """
-        Recharge les exigences non applicables déjà enregistrées pour la référence.
-        Si rien n'existe, toutes les exigences restent applicables par défaut.
+        Recharge l'état d'applicabilité déjà enregistré pour la référence,
+        exigence par exigence (dernier enregistrement mentionnant le code,
+        même règle que le dashboard et l'export). Une exigence jamais
+        renseignée reste «Non défini».
         """
         try:
             docs = get_uploaded_documents(self.project_dir)
         except Exception:
             return
 
-        current_type = self._current_type()
-
-        matching = [
-            d for d in docs
-            if str(d.get("supplier", "")) == str(self.supplier)
-            and str(d.get("reference", "")) == str(self.reference)
-            and str(d.get("source_justification_type", "")).upper() == current_type
-        ]
-        if not matching:
-            return
-
-        latest_doc = max(matching, key=lambda d: d.get("uploaded_at", ""))
-
-        na_codes = latest_doc.get("not_applicable_codes", [])
-
-        if isinstance(na_codes, str):
-            try:
-                na_codes = json.loads(na_codes)
-            except Exception:
-                na_codes = []
-
-        if current_type == "CE":
-            self._ce_page.set_not_applicable_codes(na_codes)
-
-        elif current_type == "DPE":
-            self._dpe_page.set_not_applicable_codes(na_codes)
+        for jtype, page in (("CE", self._ce_page), ("DPE", self._dpe_page)):
+            matching = [
+                d for d in docs
+                if str(d.get("supplier", "")) == str(self.supplier)
+                and str(d.get("reference", "")) == str(self.reference)
+                and (
+                    str(d.get("source_justification_type", "")).upper() == jtype
+                    or jtype in [str(b).upper() for b in (d.get("stored_in_bdds") or [])]
+                )
+            ]
+            if not matching:
+                continue
+            for row in page._req_rows:
+                row.set_state(requirement_state(matching, row.code))
 
     # ── UI construction ───────────────────────────────────────────────────────
 
@@ -1705,9 +1713,13 @@ class UploadDocumentDialog(QtWidgets.QDialog):
             return self._selected_dpe_requirements()
         return [], []
 
-    def _has_rohs(self) -> bool:
+    def _has_rohs(self, include_applicability: bool = False) -> bool:
+        """RoHS est couvert par le document (ou, avec *include_applicability*,
+        simplement renseigné : Applicable ou N/A)."""
         codes, _ = self._selected_requirements()
-        return any("rohs" in c.lower() or "2011/65" in c for c in codes)
+        if include_applicability:
+            codes = codes + self._all_applicable_requirements()[0] + self._not_applicable_requirements()[0]
+        return any(is_rohs_code(c) for c in codes)
 
     def _project_dossier_number(self) -> str:
         project_file = get_project_file_path(self.project_dir)
@@ -1719,12 +1731,16 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         data = json.loads(project_file.read_text(encoding="utf-8"))
         return [str(v).strip().upper() for v in data.get("enabled_bdds", JUSTIFICATION_TYPES)]
 
-    def _storage_types(self) -> list[str]:
+    def _storage_types(self, include_applicability: bool = False) -> list[str]:
+        """BDD concernées. Par défaut : dossiers où copier le fichier (RoHS
+        couvert → CE et DPE). Avec *include_applicability* : BDD où
+        l'enregistrement s'applique, RoHS renseigné suffisant pour que l'état
+        RoHS (Applicable / N/A) soit repris par l'autre BDD."""
         current = self._current_type()
         enabled = set(self._enabled_bdds())
-        if current == "CE" and self._has_rohs():
+        if current == "CE" and self._has_rohs(include_applicability):
             return [b for b in ["CE", "DPE"] if b in enabled]
-        if current == "DPE" and self._has_rohs():
+        if current == "DPE" and self._has_rohs(include_applicability):
             return [b for b in ["DPE", "CE"] if b in enabled]
         return [current] if current in enabled else []
 
@@ -1829,7 +1845,7 @@ class UploadDocumentDialog(QtWidgets.QDialog):
             return
 
         source_type = self._current_type()
-        stored_bdds = self._storage_types()
+        stored_bdds = self._storage_types(include_applicability=True)
         codes, labels = self._selected_requirements()
         not_applicable_codes, not_applicable_labels = self._not_applicable_requirements()
         cecc_fields = self._cecc_fields_data() if source_type == "CECC" else {}
@@ -1840,11 +1856,13 @@ class UploadDocumentDialog(QtWidgets.QDialog):
             self.mode == "import" and source_type in ("CE", "DPE") and not codes
         )
 
-        if applicability_only and self.mode == "import":
-            # On n'a pas filtré sur la case cochée (aucune ne l'est ici) :
-            # on enregistre toutes les exigences actuellement Applicable,
-            # comme le ferait le bouton «Applicabilité».
-            codes, labels = self._all_applicable_requirements()
+        # L'applicabilité est stockée à part (`applicable_codes`) :
+        # `requirement_codes` ne liste QUE les exigences couvertes par un
+        # fichier. Sinon un enregistrement sans document masquerait, dans le
+        # dashboard et l'export, les documents déjà déposés.
+        applicable_codes, _ = self._all_applicable_requirements()
+        if applicability_only:
+            codes, labels = [], []
 
         try:
             saved = 0
@@ -1868,6 +1886,7 @@ class UploadDocumentDialog(QtWidgets.QDialog):
                         stored_filename="",
                         not_applicable_codes=not_applicable_codes,
                         not_applicable_labels=not_applicable_labels,
+                        applicable_codes=applicable_codes,
                         relative_path="",
                         uploaded_at=datetime.now().isoformat(),
                     )
@@ -1892,6 +1911,7 @@ class UploadDocumentDialog(QtWidgets.QDialog):
                             stored_filename=tpath.name,
                             not_applicable_codes=not_applicable_codes,
                             not_applicable_labels=not_applicable_labels,
+                            applicable_codes=applicable_codes,
                             relative_path=str(tpath.relative_to(self.project_dir)).replace("\\", "/"),
                             uploaded_at=datetime.now().isoformat(),
                         )

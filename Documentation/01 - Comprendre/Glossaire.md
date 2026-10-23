@@ -1,6 +1,6 @@
 ---
 tags: [nox, glossaire]
-maj: 2026-09-21
+maj: 2026-10-23
 ---
 
 ↑ [[00 - Index]]
@@ -13,7 +13,7 @@ Vocabulaire du domaine et du code. Les définitions métier sont **déduites du 
 |---|---|---|
 | **NOX / N0X** | Nom du produit / du gabarit de suivi | `NOX_Manager`, `Template_BDD_*_N0X.xlsx` |
 | **BDD** | « Base de données » de justificatifs : un livrable Excel + son dossier de documents. Trois types | `JUSTIFICATION_TYPES = ("CE","CECC","DPE")` |
-| **CE** | Conformité européenne (marquage CE) : directives Machine, RoHS, CEM, ESP | `CE_REQUIREMENTS` |
+| **CE** | Conformité européenne (marquage CE) : directives Machine, Basse Tension, RoHS (2011/65/UE + 2015/863), CEM, ESP | `CE_REQUIREMENTS` |
 | **DPE** | Exigences réglementaires environnementales/produits (RoHS, DEEE, REACh, POP…) | `DPE_REQUIREMENTS` |
 | **CECC** | Contrôle à l'export (classement EAR99/ECCN/ML ITAR, licence, pays d'origine, code douanier) | `CECC_FREE_FIELDS`, `CECC_STATUSES` |
 | **Exigence** | Un texte réglementaire à justifier pour un article, identifié par son code (ex. `1907/2006`) | `requirement_codes`, `*_REQUIREMENTS` |

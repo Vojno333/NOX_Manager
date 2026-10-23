@@ -1,6 +1,6 @@
 ---
 tags: [nox, metier]
-maj: 2026-10-16
+maj: 2026-10-23
 ---
 
 ↑ [[00 - Index]] · Vocabulaire : [[Glossaire]]
@@ -22,10 +22,14 @@ Source de vérité du code : `wikidocs_qt/document_rules.py`. Les règles de cal
 | Code | Libellé | Colonne Excel |
 |---|---|---|
 | 2006/42/UE | Directive Machine | H |
+| 2014/35/UE | Directive Basse Tension | I |
 | 2011/65/UE | RoHS | J |
+| 2015/863 | RoHS (amendement) — **alias de 2011/65/UE** | K |
 | 2014/30/UE | Compatibilité électromagnétique (EMC) | L |
 | 2014/68/UE | Équipement sous pression | M |
-| AUTRES | (retiré de `CE_REQUIREMENTS` dans l'état non commité) | N |
+| AUTRES | (retiré de `CE_REQUIREMENTS` ; colonne jamais remplie) | N |
+
+**RoHS = une seule exigence affichée deux fois.** `normalize_requirement_code` ramène `2015/863` à `2011/65/UE` (`_CODE_ALIASES`, `document_rules.py`) : les colonnes J et K de l'export CE reçoivent toujours le même contenu, ainsi que la colonne RoHS (H) du DPE. Dans le dialogue, les deux lignes sont synchronisées (`CEPage._link_rohs_rows`). La complétion CE ne compte RoHS qu'une fois.
 
 ### DPE (`DPE_REQUIREMENTS`)
 
@@ -60,13 +64,15 @@ Pour CE et DPE, chaque exigence d'une référence a un état choisi via `ThreeSt
 
 ## Résolution du N/A
 
-Une exigence peut avoir été notée N/A puis « Applicable » plus tard. Le **dashboard** applique la règle : *le dernier événement (par `uploaded_at`) qui mentionne le code gagne* :
+Une exigence peut avoir été notée N/A puis « Applicable » plus tard. Règle unique, `document_rules.requirement_state`, utilisée par le dashboard, l'export et le pré-remplissage du dialogue : *le dernier événement (par `uploaded_at`) qui mentionne le code gagne* :
 
-1. Si le code figure dans `requirement_codes` → applicable.
+Les codes sont comparés après normalisation (alias RoHS compris).
+
+1. Si le code figure dans `applicable_codes` ou `requirement_codes` → Applicable.
 2. Sinon s'il figure dans `not_applicable_codes` → N/A.
-3. Sinon on passe à l'événement précédent ; aucun événement → applicable (non N/A).
+3. Sinon on passe à l'événement précédent ; aucun événement → Non défini (compté comme non N/A pour la complétion).
 
-L'**export Excel** applique une règle différente (« un seul N/A dans tout l'historique suffit ») : c'est le [[Bugs connus#BUG-002]]. La règle de référence est celle du dashboard.
+Le lien vers un document (panneau de détail, export) est pris sur le **dernier événement avec fichier** qui couvre le code ; un événement « applicabilité seule » ne masque jamais un document déjà déposé.
 
 ## Correspondance des codes
 

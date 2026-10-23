@@ -16,7 +16,11 @@ from .filter_popup import FilterPopup
 from .metadata_db import init_metadata_db, get_uploaded_documents
 from .upload_document_dialog import UploadDocumentDialog
 from .export_templates import export_project_templates
-from .document_rules import CE_REQUIREMENTS, DPE_REQUIREMENTS, JUSTIFICATION_TYPES
+from .document_rules import (
+    CE_REQUIREMENTS, DPE_REQUIREMENTS, JUSTIFICATION_TYPES,
+    REQ_APPLICABLE, REQ_NA, code_matches, doc_has_file, is_rohs_code,
+    normalize_requirement_code, requirement_state,
+)
 from .project_manager import ProjectManager
 from .project_structure import create_folders_and_subfolders
 from .new_project_dialog import NewProjectDialog
@@ -1205,37 +1209,18 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self.enabled_bdds = list(self.project_data.get("enabled_bdds", JUSTIFICATION_TYPES))
 
     def _is_rohs_code(self, code: str) -> bool:
-        code = self._normalize_requirement_code(code).lower()
-        return "2011/65/ue" in code or "rohs" in code
+        return is_rohs_code(code)
 
     def _normalize_requirement_code(self, code: str) -> str:
-        code = str(code or "").strip()
-        for sep in (" — ", " | "):
-            if sep in code:
-                code = code.split(sep, 1)[0].strip()
-        return code
+        return normalize_requirement_code(code)
 
     def _code_matches(self, a: str, b: str) -> bool:
-        return self._normalize_requirement_code(a) == self._normalize_requirement_code(b)
+        return code_matches(a, b)
 
     def _is_not_applicable(self, docs: list[dict], code: str) -> bool:
-        """Statut N/A du code selon le DERNIER enregistrement le mentionnant.
-
-        On ne doit pas cumuler l'historique : si une exigence a été marquée
-        N/A un jour puis repassée Applicable ensuite (avec ou sans document),
-        c'est ce dernier état qui doit primer, pas le premier historique
-        trouvé. On parcourt donc les documents du plus récent au plus ancien
-        et on s'arrête au premier qui mentionne ce code, dans un sens ou
-        l'autre.
-        """
-        for doc in sorted(docs, key=lambda d: d.get("uploaded_at", ""), reverse=True):
-            req_codes = doc.get("requirement_codes") or []
-            if any(self._code_matches(c, code) for c in req_codes):
-                return False
-            na_codes = doc.get("not_applicable_codes") or []
-            if any(self._code_matches(c, code) for c in na_codes):
-                return True
-        return False
+        """Statut N/A du code selon le DERNIER enregistrement le mentionnant
+        (règle commune avec l'export, cf. `document_rules.requirement_state`)."""
+        return requirement_state(docs, code) == REQ_NA
 
     def _doc_applies_to_type(self, doc: dict, justif_type: str) -> bool:
         justif_type = str(justif_type).upper()
@@ -1268,9 +1253,12 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         return sum(1 for p in folder.iterdir() if p.is_file())
 
     def _compute_requirement_score(self, docs: list[dict], code: str) -> float:
+        # Seuls les enregistrements avec un fichier couvrent une exigence :
+        # un enregistrement « applicabilité seule » ne prouve rien.
         matching = [
             d for d in docs
-            if any(self._code_matches(c, code) for c in (d.get("requirement_codes") or []))
+            if doc_has_file(d)
+            and any(self._code_matches(c, code) for c in (d.get("requirement_codes") or []))
         ]
         if not matching:
             return 0.0
@@ -1343,7 +1331,8 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
                 "mnp":          r.get("mnp", ""),
             }
 
-        CE_CODES  = ["2006/42/UE", "2011/65/UE", "2014/30/UE", "2014/68/UE"]
+        # 2015/863 est un alias de 2011/65/UE : RoHS n'est compté qu'une fois.
+        CE_CODES  = ["2006/42/UE", "2014/35/UE", "2011/65/UE", "2014/30/UE", "2014/68/UE"]
         DPE_CODES = [
             "2011/65/UE", "2012/19/UE", "2006/66/CE", "1907/2006",
             "2019/1021", "1005/2009", "517/2014", "2017/852",
@@ -1491,7 +1480,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
 
         latest_by_code: dict[str, dict] = {}
         for doc in sorted(docs, key=lambda d: d.get("uploaded_at", ""), reverse=True):
-            if not self._doc_applies_to_type(doc, justif_type):
+            if not self._doc_applies_to_type(doc, justif_type) or not doc_has_file(doc):
                 continue
             for i, code in enumerate((doc.get("requirement_codes") or [])):
                 nc = self._normalize_requirement_code(code)
@@ -1507,15 +1496,16 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         for code, default_label in expected:
             nc   = self._normalize_requirement_code(code)
             data = latest_by_code.get(nc)
-            is_na = self._is_not_applicable(docs, code)
-            label = (data["label"] if data and data.get("label") else default_label)
+            state = requirement_state(docs, code)
+            is_na = state == REQ_NA
+            label = default_label
             detail_rows.append({
                 "requirement": f"{code} | {label}",
                 "applicability": (
-    "Non applicable" if is_na
-    else "Applicable" if data
-    else "Non défini"
-),
+                    "Non applicable" if is_na
+                    else "Applicable" if (data or state == REQ_APPLICABLE)
+                    else "Non défini"
+                ),
                 "filename": "" if is_na else (data["filename"] if data else ""),
                 "path":    "" if is_na else (data["path"] if data else ""),
             })

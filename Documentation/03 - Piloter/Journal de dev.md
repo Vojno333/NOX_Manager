@@ -1,6 +1,6 @@
 ---
 tags: [nox, journal]
-maj: 2026-10-16
+maj: 2026-10-23
 ---
 
 ↑ [[00 - Index]]
@@ -13,6 +13,24 @@ Modèle d'entrée : [[Modèle - Entrée de journal]].
 
 
 ---
+
+## 2026-10-23 : modifier l'applicabilité effaçait les documents
+**Objectif** : signalement utilisateur — après un passage par le bouton « Applicabilité », les documents d'une référence semblaient effacés.
+**Cause** : l'enregistrement « applicabilité seule » (sans fichier) rangeait les exigences Applicable dans `requirement_codes`, qui veut dire « couvert par un document ». Étant le plus récent, il était choisi comme document de l'exigence : nom de fichier et lien vides dans le panneau de détail et dans l'export, complétude à 100 % sans aucun document. En plus, le dialogue rouvert remettait tout ce qui n'était pas N/A à « Applicable » (le « Non défini » était perdu).
+**Fait** :
+- Nouvelle colonne `applicable_codes_json` (boucle de migration de `init_metadata_db`) ; `requirement_codes` ne contient plus que les exigences couvertes par un fichier.
+- `document_rules.py` : `normalize_requirement_code`, `code_matches`, `doc_has_file`, `requirement_state`, une seule règle, sans Qt, pour le dashboard, l'export et le dialogue (premier pas vers [[Dette technique#DT-001]]).
+- Dashboard / export : seuls les enregistrements avec fichier fournissent le lien et comptent dans le score. L'export applique maintenant la règle « dernier événement » pour le N/A : l'ex-BUG-002 est corrigé et retiré de [[Bugs connus]].
+- Dialogue : pré-remplissage exigence par exigence (N/A / Non défini / Applicable), pour CE et DPE.
+**Vérifié** : scénario rejoué sur une base temporaire, y compris la migration d'une ancienne base et la relecture d'anciens enregistrements « applicabilité seule ». Pas encore testé à la main dans l'application.
+**Reste** : tester dans l'appli sur un vrai projet ([[Plan de test]]).
+
+### Suite : directives CE manquantes
+Le template CE contient 6 colonnes d'exigences (H à M) mais le code n'en connaissait que 4 : **2014/35/UE** (I) et **2015/863** (K) étaient toujours vides. Ajoutées à `CE_REQUIREMENTS` et à la table de colonnes de l'export.
+**Décidé** : 2015/863 n'est pas une exigence à part mais un **alias** de 2011/65/UE dans `normalize_requirement_code`. Ainsi tout le code qui compare des codes (dashboard, export, résolution N/A, partage CE/DPE) traite les deux RoHS comme une seule, sans cas particulier, et les anciennes données (2011/65/UE seul) remplissent aussi la colonne K.
+- Dialogue : lignes RoHS synchronisées ; `_storage_types(include_applicability=True)` pour l'enregistrement en base : un RoHS seulement *renseigné* (Applicable/N/A) rend l'enregistrement visible côté CE et DPE. Les **fichiers** ne sont copiés dans les deux BDD que si RoHS est couvert (inchangé).
+- Corrigé au passage : `textChanged.connect(self.changed.emit)` dans `CECCPage` (le signal transmet le texte saisi, `changed` n'attend aucun argument).
+- Complétion CE : 2014/35/UE compte comme nouvelle exigence, donc les projets existants peuvent baisser tant qu'elle n'est pas renseignée.
 
 ## 2026-10-16 : alignement export ↔ interface
 **Objectif** : corriger des signalements utilisateur — import en masse décalé, dossier « chapo » en trop à la création de projet, numéro affiché en trop d'endroits, export Excel avec des colonnes vides.

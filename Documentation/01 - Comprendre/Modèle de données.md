@@ -65,7 +65,8 @@ uploaded_documents (
   relative_path              TEXT NOT NULL,   -- relatif au dossier projet, séparateur '/'
   uploaded_at                TEXT NOT NULL,   -- ISO 8601
   not_applicable_codes_json  TEXT NOT NULL DEFAULT '[]',
-  not_applicable_labels_json TEXT NOT NULL DEFAULT '[]'
+  not_applicable_labels_json TEXT NOT NULL DEFAULT '[]',
+  applicable_codes_json      TEXT NOT NULL DEFAULT '[]'   -- exigences « Applicable » (ajout 2026-10-23)
 )
 ```
 
@@ -73,11 +74,13 @@ uploaded_documents (
 
 Une ligne n'est **pas seulement un document** : c'est un **événement d'import ou d'applicabilité**, horodaté.
 
-| Cas | `stored_filename` / `relative_path` | `requirement_codes` | `not_applicable_codes` |
-|---|---|---|---|
-| Import d'un document | rempli | exigences cochées et « Applicable » | exigences marquées N/A au moment de l'import |
-| Mode « Applicabilité » (ou import sans exigence cochée) | **vide** | toutes les exigences « Applicable » | exigences N/A |
-| CECC | rempli | vide | vide (les données sont dans `cecc_fields`) |
+| Cas | `stored_filename` / `relative_path` | `requirement_codes` | `applicable_codes` | `not_applicable_codes` |
+|---|---|---|---|---|
+| Import d'un document | rempli | exigences cochées et « Applicable » | toutes les exigences « Applicable » | exigences marquées N/A au moment de l'import |
+| Mode « Applicabilité » (ou import sans exigence cochée) | **vide** | **vide** | toutes les exigences « Applicable » | exigences N/A |
+| CECC | rempli | vide | vide | vide (les données sont dans `cecc_fields`) |
+
+`requirement_codes` signifie toujours « couvert par **ce fichier** » ; seules les lignes avec un `relative_path` comptent comme documents (`document_rules.doc_has_file`). Les lignes « applicabilité seule » enregistrées **avant le 2026-10-23** ont `requirement_codes` rempli sans fichier : elles sont lues comme de l'applicabilité, jamais comme une couverture.
 
 L'état courant d'une exigence se déduit du **dernier événement qui la mentionne** (voir [[Règles métier#Résolution du N/A]]). L'historique n'est jamais purgé, sauf par suppression de la référence (`delete_uploaded_documents_for_rows`, qui supprime **par (supplier, reference)**).
 
