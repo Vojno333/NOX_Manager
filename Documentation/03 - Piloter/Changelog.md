@@ -27,6 +27,9 @@ Numérotation proposée : `MAJEUR.MINEUR.CORRECTIF` (ex. 1.1.0). Il n'existe pas
 - Création de projet : `.nox` et les dossiers `BDD CE/CECC/DPE …` sont créés directement dans l'emplacement choisi, sans dossier intermédiaire nommé d'après le numéro de l'affaire.
 - Accueil (liste des projets récents) et dashboard (titre de fenêtre, badge) affichent le **numéro de dossier** au lieu du numéro de l'affaire.
 
+### Ajouté (export)
+- **Versionnage de l'export** : la version précédente de chaque `BDD_<type>_<n°>.xlsx` est déplacée dans un sous-dossier `OLD`, nommée `…_V_<date de dernière mise à jour>.xlsx`, au lieu d'être écrasée. Le message de fin d'export liste les fichiers archivés. Si un export est ouvert dans Excel, rien n'est modifié.
+
 ### Ajouté (CE)
 - Exigences CE **2014/35/UE (Basse Tension)** et **2015/863 (RoHS, amendement)** : saisie dans le dialogue, panneau de détail et colonnes I et K de l'export CE (déjà présentes dans le template mais jamais remplies).
 - Les deux RoHS (2011/65/UE et 2015/863) sont liées : renseigner l'une renseigne l'autre, ainsi que RoHS côté DPE, y compris pour un N/A posé via « Applicabilité ».

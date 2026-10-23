@@ -1,6 +1,6 @@
 ---
 tags: [nox, test, recette]
-maj: 2026-09-21
+maj: 2026-10-23
 ---
 
 ↑ [[00 - Index]]
@@ -73,7 +73,8 @@ Prévoir 3 petits fichiers : `rohs.pdf`, `reach_estimation.pdf` (le mot « estim
 - [ ] **Cas de non-régression BUG-002** : exigence N/A puis Applicable avec document → doit apparaître avec un lien, pas « N/A ».
 - [ ] **Cas de non-régression BUG-001** : statut CECC et n° de licence saisis → présents dans les colonnes du fichier CECC.
 - [ ] Template manquant : message d'erreur explicite (renommer temporairement un template).
-- [ ] Export répété : le fichier est écrasé sans erreur ; fichier ouvert dans Excel : message d'erreur clair.
+- [ ] Export répété : l'ancien fichier est déplacé dans `OLD/` sous `BDD_<type>_<n°>_V_<date>.xlsx` ; deux exports dans la même minute → suffixe ` (2)`.
+- [ ] Un export ouvert dans Excel : message clair et **aucun** fichier modifié ni archivé (y compris pour les autres BDD).
 
 ### Build (release uniquement)
 - [ ] Toutes les vérifications ci-dessus jouées **avec `NOX_Manager.exe`**, sur un poste sans Python.

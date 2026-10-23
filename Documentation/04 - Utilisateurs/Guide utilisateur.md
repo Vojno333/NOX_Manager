@@ -1,6 +1,6 @@
 ---
 tags: [nox, utilisateur]
-maj: 2026-09-21
+maj: 2026-10-23
 ---
 
 ↑ [[00 - Index]] · Détail technique des parcours : [[Flux fonctionnels]] · Vocabulaire : [[Glossaire]]
@@ -60,7 +60,7 @@ Renseigne au minimum le **fournisseur du document**, le **Manufacturer Part Numb
 
 ## Exporter
 
-Le bouton d'export crée, dans le dossier de chaque livrable, un fichier `BDD_<type>_<numéro>.xlsx`. **Il écrase le précédent** : ne fais pas de saisie manuelle dans ce fichier, refais l'export à la place. Ferme le fichier dans Excel avant d'exporter.
+Le bouton d'export crée, dans le dossier de chaque livrable, un fichier `BDD_<type>_<numéro>.xlsx`. L'ancienne version n'est pas perdue : elle est déplacée dans le sous-dossier **OLD**, renommée avec la date de sa dernière mise à jour (ex. `BDD_CE_N025_V_2026-10-23_14h05.xlsx`). Ne fais pas de saisie manuelle dans l'export, refais l'export à la place. Ferme les fichiers dans Excel avant d'exporter : sinon l'export est annulé avec un message.
 
 ## Supprimer
 
@@ -76,7 +76,7 @@ Le bouton d'export crée, dans le dossier de chaque livrable, un fichier `BDD_<t
 |---|---|
 | L'application ne démarre pas | Ne pas déplacer `NOX_Manager.exe` hors de son dossier ; relancer depuis le dossier complet |
 | Export : « Template introuvable » | Le dossier d'installation est incomplet : réinstaller la version complète |
-| Export : erreur d'écriture | Le fichier Excel est ouvert : le fermer |
+| Export : « Impossible d'archiver l'ancien export » | Le fichier Excel est ouvert : le fermer puis relancer l'export |
 | Projet absent des récents | **Ouvrir un projet existant** et choisir son dossier |
 | Complétion CECC à 0 % / colonnes CECC vides dans l'Excel | Défaut connu, en cours de traitement ([[Bugs connus#BUG-001]]) |
 | Tout est étrange après une mise à jour | Ne pas mélanger deux versions sur le même projet partagé ([[Build et livraison#Mise à jour chez l'utilisateur]]) |

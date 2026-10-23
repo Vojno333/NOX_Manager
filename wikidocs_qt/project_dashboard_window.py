@@ -1627,11 +1627,12 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
 
     def _export_templates(self):
         try:
-            paths = export_project_templates(self.project_dir)
-            QtWidgets.QMessageBox.information(
-                self, "Export terminé",
-                "Fichiers exportés :\n\n" + "\n".join(str(p) for p in paths),
-            )
+            results = export_project_templates(self.project_dir)
+            msg = "Fichiers exportés :\n\n" + "\n".join(str(p) for p, _ in results)
+            archived = [a for _, a in results if a]
+            if archived:
+                msg += "\n\nAnciennes versions déplacées dans OLD :\n\n" + "\n".join(a.name for a in archived)
+            QtWidgets.QMessageBox.information(self, "Export terminé", msg)
         except Exception as e:
             QtWidgets.QMessageBox.critical(self, "Erreur export", str(e))
 

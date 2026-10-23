@@ -32,6 +32,11 @@ Le template CE contient 6 colonnes d'exigences (H à M) mais le code n'en connai
 - Corrigé au passage : `textChanged.connect(self.changed.emit)` dans `CECCPage` (le signal transmet le texte saisi, `changed` n'attend aucun argument).
 - Complétion CE : 2014/35/UE compte comme nouvelle exigence, donc les projets existants peuvent baisser tant qu'elle n'est pas renseignée.
 
+### Suite : versionnage de l'export
+Demande utilisateur : ne plus écraser l'export, archiver l'ancien dans `OLD` sous `XXXX_V_<date de dernière mise à jour>`.
+**Fait** : `_archive_previous_export` / `_save_versioned` dans `export_templates.py`. Date = `st_mtime` du fichier archivé, format `AAAA-MM-JJ_HHhMM` (tri chronologique, pas de `/` ni `:` interdits dans les noms Windows ; l'heure évite les collisions de plusieurs exports dans la journée, suffixe ` (n)` en dernier recours). `export_project_templates` retourne maintenant `list[(export, archivé | None)]` (seul appelant : `_export_templates` du dashboard).
+**Décidé** : vérifier le verrou de **tous** les exports avant d'en écrire un (`_ensure_not_locked`, ouverture `r+b`) pour ne jamais laisser un export à moitié fait. Le dossier `OLD` n'est jamais purgé.
+
 ## 2026-10-16 : alignement export ↔ interface
 **Objectif** : corriger des signalements utilisateur — import en masse décalé, dossier « chapo » en trop à la création de projet, numéro affiché en trop d'endroits, export Excel avec des colonnes vides.
 **Fait** :

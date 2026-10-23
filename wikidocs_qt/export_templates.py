@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 from openpyxl.styles import Font
@@ -656,7 +658,64 @@ def _fill_cecc_sheet(ws, pairs, grouped_docs, project_dir, project_data):
     _update_cecc_footer_formulas(ws, proved_row, estimated_row, last_data_row)
 
 
-def export_project_templates(project_dir: Path) -> list[Path]:
+OLD_EXPORTS_DIRNAME = "OLD"
+
+
+def _locked_message(output: Path) -> str:
+    return (
+        f"Impossible d'archiver l'ancien export :\n{output}\n\n"
+        f"Le fichier est probablement ouvert dans Excel : fermez-le puis relancez l'export."
+    )
+
+
+def _ensure_not_locked(output: Path) -> None:
+    if not output.exists():
+        return
+    try:
+        with output.open("r+b"):
+            pass
+    except PermissionError as e:
+        raise PermissionError(_locked_message(output)) from e
+
+
+def _archive_previous_export(output: Path) -> Path | None:
+    """Déplace l'export existant dans `<dossier>/OLD/<nom>_V_<date de dernière
+    modification>.xlsx` avant qu'il soit remplacé. Retourne le chemin archivé,
+    ou None s'il n'y avait pas d'ancienne version."""
+    if not output.exists():
+        return None
+
+    old_dir = output.parent / OLD_EXPORTS_DIRNAME
+    old_dir.mkdir(parents=True, exist_ok=True)
+
+    stamp = datetime.fromtimestamp(output.stat().st_mtime).strftime("%Y-%m-%d_%Hh%M")
+    target = old_dir / f"{output.stem}_V_{stamp}{output.suffix}"
+    i = 2
+    while target.exists():
+        target = old_dir / f"{output.stem}_V_{stamp} ({i}){output.suffix}"
+        i += 1
+
+    try:
+        shutil.move(str(output), str(target))
+    except PermissionError as e:
+        raise PermissionError(_locked_message(output)) from e
+    return target
+
+
+def _save_versioned(workbook, output: Path) -> Path | None:
+    """Archive l'éventuelle version précédente puis enregistre le classeur."""
+    output.parent.mkdir(parents=True, exist_ok=True)
+    archived = _archive_previous_export(output)
+    workbook.save(output)
+    return archived
+
+
+def export_project_templates(project_dir: Path) -> list[tuple[Path, Path | None]]:
+    """Remplit les templates des BDD activées.
+
+    Retourne, pour chaque export, (fichier créé, ancienne version archivée
+    dans OLD ou None).
+    """
     project_data = _load_project_data(project_dir)
     dossier_number = project_data["dossier_number"]
     project_name = project_data.get("project_name", dossier_number)
@@ -678,43 +737,43 @@ def export_project_templates(project_dir: Path) -> list[Path]:
     if not dpe_template.exists():
         raise FileNotFoundError(f"Template introuvable : {dpe_template.name}")
 
+    # Vérifie AVANT d'écrire quoi que ce soit qu'aucun export existant n'est
+    # ouvert (Excel le verrouille) : évite un export à moitié fait.
+    for t in ("CE", "CECC", "DPE"):
+        if t in enabled_bdds:
+            _ensure_not_locked(project_dir / f"BDD {t} {dossier_number}" / _safe_output_name(t, dossier_number))
+
     exports = []
 
     if "CE" in enabled_bdds:
         ce_output = project_dir / f"BDD CE {dossier_number}" / _safe_output_name("CE", dossier_number)
-        ce_output.parent.mkdir(parents=True, exist_ok=True)
 
         wb_ce = load_workbook(ce_template)
         ws_ce = _first_sheet(wb_ce)
         _apply_project_identity(ws_ce, "CE", project_name)
         _fill_ce_sheet(ws_ce, pairs, grouped_docs, project_dir, project_data)
         _reset_sheet_view_to_a1(ws_ce)
-        wb_ce.save(ce_output)
-        exports.append(ce_output)
+        exports.append((ce_output, _save_versioned(wb_ce, ce_output)))
 
     if "CECC" in enabled_bdds:
         cecc_output = project_dir / f"BDD CECC {dossier_number}" / _safe_output_name("CECC", dossier_number)
-        cecc_output.parent.mkdir(parents=True, exist_ok=True)
 
         wb_cecc = load_workbook(cecc_template)
         ws_cecc = _first_sheet(wb_cecc)
         _apply_project_identity(ws_cecc, "CECC", project_name)
         _fill_cecc_sheet(ws_cecc, pairs, grouped_docs, project_dir, project_data)
         _reset_sheet_view_to_a1(ws_cecc)
-        wb_cecc.save(cecc_output)
-        exports.append(cecc_output)
+        exports.append((cecc_output, _save_versioned(wb_cecc, cecc_output)))
 
     if "DPE" in enabled_bdds:
         dpe_output = project_dir / f"BDD DPE {dossier_number}" / _safe_output_name("DPE", dossier_number)
-        dpe_output.parent.mkdir(parents=True, exist_ok=True)
 
         wb_dpe = load_workbook(dpe_template)
         ws_dpe = _first_sheet(wb_dpe)
         _apply_project_identity(ws_dpe, "DPE", project_name)
         _fill_dpe_sheet(ws_dpe, pairs, grouped_docs, project_dir, project_data)
         _reset_sheet_view_to_a1(ws_dpe)
-        wb_dpe.save(dpe_output)
-        exports.append(dpe_output)
+        exports.append((dpe_output, _save_versioned(wb_dpe, dpe_output)))
 
     return exports
 

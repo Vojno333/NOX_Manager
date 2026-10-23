@@ -1,6 +1,6 @@
 ---
 tags: [nox, flux]
-maj: 2026-10-16
+maj: 2026-10-23
 ---
 
 ↑ [[00 - Index]] · Vocabulaire : [[Glossaire]]
@@ -54,7 +54,7 @@ Bouton d'export → `export_project_templates(project_dir)`.
 
 1. Lecture de `project.json`, regroupement des documents par (fournisseur, référence, BDD) (`_group_docs`).
 2. Liste des couples (fournisseur, référence) à partir de **`project.json` → `rows`** (même source que le dashboard) ; repli sur un **scan des dossiers** seulement si `rows` est vide (`_scan_supplier_reference_pairs`). Le libellé, le MNP et le n° de commande de chaque ligne sont relus depuis `rows` pour remplir les colonnes C/D/F des templates (`_rows_lookup`).
-3. Pour chaque BDD activée : chargement du template, en-tête projet, remplissage, redimensionnement du tableau et du pied (`_resize_table_area`), extension de la mise en forme conditionnelle, écriture de `BDD <type> <n°>/BDD_<type>_<n°>.xlsx`.
+3. Pour chaque BDD activée : chargement du template, en-tête projet, remplissage, redimensionnement du tableau et du pied (`_resize_table_area`), extension de la mise en forme conditionnelle, écriture de `BDD <type> <n°>/BDD_<type>_<n°>.xlsx`. **Versionnage** : avant l'écriture, un export existant est déplacé dans `BDD <type> <n°>/OLD/BDD_<type>_<n°>_V_<AAAA-MM-JJ_HHhMM>.xlsx` (date = dernière modification du fichier ; suffixe ` (2)`… en cas de doublon). Tous les exports existants sont d'abord testés : si l'un est ouvert dans Excel, rien n'est écrit (`_ensure_not_locked`).
 4. Message listant les fichiers, ou message d'erreur (`FileNotFoundError` si un template manque).
 
 L'export **écrase** le fichier du même nom sans confirmation ; ne pas y saisir de données à la main.
