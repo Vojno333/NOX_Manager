@@ -6,6 +6,8 @@ Mécanique du classeur seulement : le contenu des cellules est décidé par
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
 from copy import copy
 from datetime import datetime
@@ -68,7 +70,31 @@ def archiver(sortie: Path) -> Path | None:
         shutil.move(str(sortie), str(cible))
     except PermissionError as e:
         raise PermissionError(message_verrou(sortie)) from e
+    _reloger_liens(cible)
     return cible
+
+
+def _est_relatif(lien: str) -> bool:
+    return not re.match(r"^([A-Za-z]:|/|\\|[a-z][a-z0-9+.-]*://)", lien)
+
+
+def _reloger_liens(archive: Path) -> None:
+    """L'export archivé est un niveau plus bas (`OLD/`) : ses liens relatifs
+    (E13) reçoivent `../` pour viser toujours les mêmes documents."""
+    try:
+        classeur = load_workbook(archive)
+    except Exception:  # export vide ou illisible : archivé tel quel
+        return
+    modifie = False
+    for ws in classeur.worksheets:
+        for ligne in ws.iter_rows():
+            for cellule in ligne:
+                cible = cellule.hyperlink.target if cellule.hyperlink else None
+                if cible and _est_relatif(cible):
+                    cellule.hyperlink.target = "../" + cible
+                    modifie = True
+    if modifie:
+        classeur.save(archive)
 
 
 # ── Copie de lignes et de styles ──
@@ -219,11 +245,16 @@ def _titre_d_onglet(titre: str) -> str:
     return nettoye or "Feuille"
 
 
-def _ecrire_cellule(ws, coordonnee: str, valeur, lien: Path | None) -> None:
+def lien_relatif(cible: Path, depuis: Path) -> str:
+    """Lien de `depuis` (dossier de l'export) vers `cible`, séparateur « / » (E13)."""
+    return Path(os.path.relpath(cible, depuis)).as_posix()
+
+
+def _ecrire_cellule(ws, coordonnee: str, valeur, lien: Path | None, base: Path) -> None:
     cellule = ws[coordonnee]
     cellule.value = valeur
     if lien is not None:
-        cellule.hyperlink = lien.as_posix()
+        cellule.hyperlink = lien_relatif(lien, base)
         cellule.font = Font(color="0000FF", underline="single")
 
 
@@ -243,9 +274,10 @@ def ecrire(contenu: ContenuExport) -> Path | None:
     ws.insert_rows(pied_1, 2)  # deux lignes vides avant le pied de tableau
     pied_1, pied_2 = pied_1 + 2, pied_2 + 2
 
+    base = contenu.sortie.parent  # les liens sont relatifs à l'emplacement de l'export
     for i, cellules in enumerate(contenu.lignes, start=PREMIERE_LIGNE):
         for colonne, cellule in cellules:
-            _ecrire_cellule(ws, f"{colonne}{i}", cellule.valeur, cellule.lien)
+            _ecrire_cellule(ws, f"{colonne}{i}", cellule.valeur, cellule.lien, base)
 
     derniere = PREMIERE_LIGNE + max(nb, 1) - 1
     if contenu.livrable == "CECC":
