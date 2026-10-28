@@ -14,14 +14,15 @@ from pathlib import Path
 from app.dataaccess import arborescence, base_projet, projet_fichier
 from app.models.depot import APPLICABILITE, IMPORT, SaisieDepot
 from app.models.enregistrement import Enregistrement
+from app.models.referentiel import EXTENSIONS_DEPOT, FORMATS_DEPOT
 from app.services import applicabilite as ap
 
-FORMATS_ACCEPTES = (".pdf", ".docx", ".xlsx")  # R7
 CHAMPS_CECC_OBLIGATOIRES = ("manufacturer_doc", "manufacturer_part_number", "nom_cecc")
 
 
 def format_accepte(fichier: Path) -> bool:
-    return fichier.suffix.lower() in FORMATS_ACCEPTES
+    """Extension dans la liste fermée des formats acceptés (E2)."""
+    return fichier.suffix.lower() in EXTENSIONS_DEPOT
 
 
 # ── Exigences saisies ──
@@ -141,10 +142,7 @@ def verifier(saisie: SaisieDepot, livrables_suivis: list[str]) -> str | None:
     if livrable not in [str(v).strip().upper() for v in livrables_suivis]:
         return f"Le livrable {livrable} n'est pas activé sur ce projet."
     if saisie.fichier and not format_accepte(saisie.fichier):
-        return (
-            "Format de fichier non accepté : seuls les fichiers PDF, Word (.docx) "
-            "et Excel (.xlsx) sont acceptés."
-        )
+        return "Format de fichier non accepté. Formats acceptés : " + ", ".join(FORMATS_DEPOT) + "."
     if livrable in ("CE", "DPE"):
         if saisie.mode == APPLICABILITE:
             return None
