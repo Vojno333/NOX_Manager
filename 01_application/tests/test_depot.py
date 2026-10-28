@@ -98,7 +98,7 @@ def test_s10_r11_applicabilite_seule(projet_essai):
     assert depot.message_de_fin(saisie, 1)[0] == "Applicabilité enregistrée"
 
 
-def test_s11_r12_fiche_cecc(projet_essai, tmp_path):
+def test_e10_nom_cecc_obligatoire(projet_essai, tmp_path):
     fichier = _fichier(tmp_path, "cecc.pdf")
     saisie = SaisieDepot(
         projet_essai,
@@ -107,15 +107,18 @@ def test_s11_r12_fiche_cecc(projet_essai, tmp_path):
         fichier=fichier,
         champs_cecc={"manufacturer_doc": "ACME", "manufacturer_part_number": ""},
     )
-    assert depot.verifier(saisie, LIVRABLES) == (
+    refus = (
         "Pour un justificatif CECC, renseignez au minimum Fournisseur Doc, "
         "Manufacturer Part Number et Nom : CECC."
     )
+    assert depot.verifier(saisie, LIVRABLES) == refus
     saisie.champs_cecc["manufacturer_part_number"] = "MPN-1"
-    assert depot.verifier(saisie, LIVRABLES) is None  # nom CECC vide accepté (C7)
+    assert depot.verifier(saisie, LIVRABLES) == refus  # nom CECC vide : refusé (E10)
+    saisie.champs_cecc["nom_cecc"] = "Déclaration ACME"
+    assert depot.verifier(saisie, LIVRABLES) is None
     depot.enregistrer(saisie)
     fiche = base_projet.derniere_fiche_cecc(projet_essai, "ACME", "REF-001")
-    assert fiche["nom_cecc"] == "cecc.pdf"
+    assert fiche["nom_cecc"] == "Déclaration ACME"
     assert (projet_essai / "BDD CECC N999/Documents/ACME/REF-001/CECC_ACME_REF-001.pdf").is_file()
     saisie.fichier = None
     assert depot.verifier(saisie, LIVRABLES) == "Merci de choisir un fichier."
