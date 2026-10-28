@@ -208,6 +208,9 @@ class MainTab(QtWidgets.QWidget):
 class FenetreSuivi(QtWidgets.QMainWindow):
     """Tableau de suivi d'un projet ouvert."""
 
+    # Chemins des documents introuvables (E12), calculés dans un fil à part.
+    _introuvables_prets = QtCore.Signal(object)
+
     def __init__(self, projet: Projet, parent=None):
         super().__init__(parent)
         self.projet = projet
@@ -217,6 +220,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         self._lignes_filtrees: list[LigneSuivi] = []
         self.lignes_par_onglet: dict[str, list[LigneSuivi]] = {}
         self.lecture_seule = False
+        self.introuvables: set[str] = set()
+        self._introuvables_prets.connect(self._sur_introuvables)
         self._boutons_modification: list[QtWidgets.QPushButton] = []
         self.setWindowTitle(f"NOX_Manager — {self._nom_affiche()}")
         ajuster_et_centrer(self, 1400, 860, largeur_min=1000, hauteur_min=620)
@@ -518,9 +523,43 @@ class FenetreSuivi(QtWidgets.QMainWindow):
                 onglet.load_rows(self.lignes_par_onglet.get(nom, []))
         finally:
             self.setUpdatesEnabled(True)
+        self._marquer_introuvables()
         self._charger_onglet_courant()
         self._maj_entetes_filtres()
         self._lbl_date.setText(datetime.now().strftime("%d/%m/%Y %H:%M"))
+        if recalculer:
+            self._chercher_introuvables()
+
+    # ── Fichiers disparus (E12) ───────────────────────────────────────────────
+    def _chercher_introuvables(self):
+        """Parcours du disque hors du fil de l'interface (partage réseau lent)."""
+        projet = self.projet
+
+        def calculer():
+            resultat = completion.documents_introuvables(projet)
+            try:
+                self._introuvables_prets.emit(resultat)
+            except RuntimeError:  # fenêtre fermée entre-temps
+                pass
+
+        QtCore.QThreadPool.globalInstance().start(calculer)
+
+    def _sur_introuvables(self, introuvables: set[str]):
+        self.introuvables = introuvables
+        self._marquer_introuvables()
+        self._charger_onglet_courant()
+
+    def _marquer_introuvables(self):
+        for onglet in self.onglets_par_nom.values():
+            table = onglet.table
+            for r in range(table.rowCount()):
+                item = table.item(r, 6)
+                ligne = item.data(Qt.UserRole) if item else None
+                if not ligne:
+                    continue
+                n = completion.nb_introuvables(ligne, self.introuvables)
+                item.setText(f"{ligne.completion_texte} ⚠" if n else ligne.completion_texte)
+                item.setToolTip(f"{n} document(s) introuvable(s) sur le disque" if n else "")
 
     def _maj_indicateurs(self, lignes: list[LigneSuivi]):
         valeurs = completion.indicateurs(lignes)
@@ -535,7 +574,10 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         nom = self.tabs.tabText(self.tabs.currentIndex())
         if nom not in self.onglets_par_nom:
             return
-        self.lbl_row_count.setText(f"{len(self.lignes_par_onglet.get(nom, []))} lignes")
+        texte = f"{len(self.lignes_par_onglet.get(nom, []))} lignes"
+        if self.introuvables:
+            texte += f"   ·   ⚠ {len(self.introuvables)} document(s) introuvable(s) sur le disque"
+        self.lbl_row_count.setText(texte)
         self.detail_panel.clear()
 
     def _filtre_actif(self, colonne: str) -> bool:
@@ -570,7 +612,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         self.charger(recalculer=False)
 
     def _sur_ligne_selectionnee(self, ligne: LigneSuivi):
-        self.detail_panel.populate(ligne, completion.lignes_de_detail(ligne, self.projet.dossier))
+        details = completion.lignes_de_detail(ligne, self.projet.dossier, self.introuvables)
+        self.detail_panel.populate(ligne, details)
 
     # ── Actions ───────────────────────────────────────────────────────────────
     def _onglet_courant(self) -> MainTab | None:

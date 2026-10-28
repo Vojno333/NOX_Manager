@@ -199,3 +199,29 @@ def ouvrir_avec_l_application(chemin: Path) -> None:
         subprocess.run(["open", str(chemin)], check=False)  # noqa: S603, S607
     else:
         subprocess.run(["xdg-open", str(chemin)], check=False)  # noqa: S603, S607
+
+
+def fichiers_presents(dossier_projet: Path) -> set[str]:
+    """Chemins relatifs (séparateur « / ») de tous les fichiers rangés sous un
+    dossier `BDD …/Documents` : un seul parcours, à faire hors du fil de l'interface."""
+    presents: set[str] = set()
+    try:
+        livrables = [
+            e for e in os.scandir(dossier_projet) if e.is_dir() and e.name.startswith("BDD ")
+        ]
+    except OSError:
+        return presents
+    for livrable in livrables:
+        pile = [Path(livrable.path) / "Documents"]
+        while pile:
+            dossier = pile.pop()
+            try:
+                with os.scandir(dossier) as entrees:
+                    for entree in entrees:
+                        if entree.is_dir(follow_symlinks=False):
+                            pile.append(Path(entree.path))
+                        elif entree.is_file(follow_symlinks=False):
+                            presents.add(chemin_relatif(dossier_projet, Path(entree.path)))
+            except OSError:
+                continue
+    return presents

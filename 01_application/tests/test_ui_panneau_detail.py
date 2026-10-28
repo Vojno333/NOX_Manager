@@ -51,6 +51,7 @@ def test_detail_des_exigences(app, projet_essai):
         "applicability": "Applicable",
         "filename": "",
         "path": "",
+        "introuvable": False,
     }
     fenetre._sur_ligne_selectionnee(ligne)
     panneau = fenetre.detail_panel
@@ -93,3 +94,27 @@ def test_e6_selection_de_plusieurs_exigences(app, projet_essai):
     assert fenetre.detail_panel.codes_selectionnes(4) == ["2006/42/UE", "2014/30/UE"]
     # Ligne cliquée hors sélection : elle seule.
     assert fenetre.detail_panel.codes_selectionnes(2) == ["2011/65/UE"]
+
+
+def test_e12_fichier_disparu_signale(app, projet_essai):
+    fenetre = FenetreSuivi(projet_fichier.lire_projet(projet_essai))
+    introuvables = completion.documents_introuvables(fenetre.projet)
+    assert introuvables == {"BDD DPE N999/Documents/DELTA/REF-030/DPE_DELTA_REF-030.pdf"}
+    fenetre._sur_introuvables(introuvables)
+    table = fenetre.onglets_par_nom["DPE"].table
+    textes = {table.item(r, 0).text(): table.item(r, 6) for r in range(table.rowCount())}
+    assert textes["DELTA"].text() == "100 % ⚠"
+    assert textes["DELTA"].toolTip() == "1 document(s) introuvable(s) sur le disque"
+    assert textes["ACME"].text() == "0 %"
+    fenetre.tabs.setCurrentIndex(3)
+    assert "⚠ 1 document(s) introuvable(s)" in fenetre.lbl_row_count.text()
+    ligne = _ligne(fenetre, "DELTA", "REF-030", "DPE")
+    detail = completion.lignes_de_detail(ligne, projet_essai, introuvables)
+    reach = next(d for d in detail if d["code"] == "1907/2006")
+    assert reach["introuvable"] and reach["filename"] == "DPE_DELTA_REF-030.pdf"
+    fenetre._sur_ligne_selectionnee(ligne)
+    noms = [
+        fenetre.detail_panel._tbl_docs.item(r, 2).text()
+        for r in range(fenetre.detail_panel._tbl_docs.rowCount())
+    ]
+    assert "⚠ DPE_DELTA_REF-030.pdf (introuvable)" in noms
