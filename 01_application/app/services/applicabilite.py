@@ -66,11 +66,6 @@ def vaut_pour_livrable(enr: Enregistrement, livrable: str) -> bool:
     return rohs and livrable in ("CE", "DPE") and source in ("CE", "DPE")
 
 
-def est_estimation(enr: Enregistrement) -> bool:
-    """Une estimation se repère au nom du fichier (R18)."""
-    return "estimation" in (enr.nom_stocke or "").lower()
-
-
 def valeur_cecc(champs: dict | None, cle: str) -> str:
     """Valeur d'un champ de fiche CECC, en lisant les anciennes clés en repli."""
     champs = champs or {}

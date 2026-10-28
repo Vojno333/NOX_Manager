@@ -14,7 +14,13 @@ from pathlib import Path
 from app.dataaccess import arborescence, base_projet
 from app.models.enregistrement import Enregistrement
 from app.models.projet import Projet
-from app.models.referentiel import CHAMPS_CECC, EXIGENCES_CE, EXIGENCES_DPE, STATUT_VALIDE
+from app.models.referentiel import (
+    CHAMPS_CECC,
+    EXIGENCES_CE,
+    EXIGENCES_DPE,
+    STATUT_ESTIMATION,
+    STATUT_VALIDE,
+)
 from app.models.suivi import LigneSuivi
 from app.services import applicabilite as ap
 
@@ -24,15 +30,12 @@ CODES_DPE = [c for c, _ in EXIGENCES_DPE]
 
 
 def score_exigence(enrs: list[Enregistrement], code: str) -> float:
-    """Part des documents couvrant l'exigence qui ne sont pas des estimations (R17, R18).
+    """1 si au moins un document couvre l'exigence, estimation ou non, sinon 0 (R17, E5).
 
-    Seuls les enregistrements avec un fichier couvrent une exigence.
+    Seuls les enregistrements avec un fichier couvrent une exigence. L'export
+    Excel garde, lui, la distinction prouvé / estimé (R18, R26).
     """
-    couvrants = [e for e in enrs if e.a_un_fichier and ap.couvre(e, code)]
-    if not couvrants:
-        return 0.0
-    estimations = sum(1 for e in couvrants if ap.est_estimation(e))
-    return max(0.0, min(1.0, (len(couvrants) - estimations) / len(couvrants)))
+    return 1.0 if any(e.a_un_fichier and ap.couvre(e, code) for e in enrs) else 0.0
 
 
 def completion_ce_dpe(enrs: list[Enregistrement], codes: list[str]) -> float:
@@ -46,10 +49,11 @@ def completion_ce_dpe(enrs: list[Enregistrement], codes: list[str]) -> float:
 
 
 def completion_cecc(enrs: list[Enregistrement]) -> float:
-    """100 % si le statut CECC le plus récent est « Validé », sinon 0 % (R19)."""
+    """100 % si le statut CECC le plus récent est « Validé » ou « Estimation » (R19, E5)."""
     avec_statut = [e for e in enrs if ap.statut_cecc(e.champs_cecc)]
     dernier = max(avec_statut, key=lambda e: e.depose_le or "", default=None)
-    return 1.0 if dernier and ap.statut_cecc(dernier.champs_cecc) == STATUT_VALIDE else 0.0
+    valides = (STATUT_VALIDE, STATUT_ESTIMATION)
+    return 1.0 if dernier and ap.statut_cecc(dernier.champs_cecc) in valides else 0.0
 
 
 def _trier(couples) -> list[tuple[str, str]]:

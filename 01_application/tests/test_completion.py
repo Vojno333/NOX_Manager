@@ -47,3 +47,14 @@ def test_repli_sur_les_dossiers_sans_articles(projet_essai):
     projet.articles = []
     couples = completion.couples_du_projet(projet)
     assert ("ACME", "REF-001") in couples and len(couples) == 6
+
+
+def test_e5_une_estimation_vaut_un_valide(projet_essai):
+    lignes = {(lg.reference, lg.livrable): lg for lg in _lignes(projet_essai)}
+    # Machine couverte par un document et une estimation : 100 % (et non ½) ;
+    # Basse tension applicable sans document : 0 → (1 + 0) / 2.
+    assert lignes[("REF-002", "CE")].completion_texte == "50 %"
+    # Ancienne fiche au statut « Estimation » : compte comme « Validé ».
+    assert lignes[("REF-040", "CECC")].completion_texte == "100 %"
+    # Relancé après Validé : toujours 0 %.
+    assert lignes[("REF-010", "CECC")].completion_texte == "0 %"

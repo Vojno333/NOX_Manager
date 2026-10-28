@@ -21,6 +21,6 @@ def test_ouvrir_un_projet_ouvre_son_tableau_de_suivi(app, tmp_path, projet_essai
     accueil.ouvrir_dossier(projet_essai)
     assert len(tableaux) == 1
     assert tableaux[0].windowTitle() == "NOX_Manager — N999"
-    assert tableaux[0].kpi_ce._value_lbl.text() == "35 %"
+    assert tableaux[0].kpi_ce._value_lbl.text() == "39 %"
     for t in tableaux:
         t.close()
