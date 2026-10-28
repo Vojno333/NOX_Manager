@@ -14,7 +14,12 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from app.models.depot import SaisieDepot
 from app.models.projet import Projet
-from app.models.referentiel import LIVRABLES, PAYS_ORIGINE_4A
+from app.models.referentiel import (
+    EXTENSIONS_DEPOT,
+    FORMATS_DEPOT,
+    LIVRABLES,
+    PAYS_ORIGINE_4A,
+)
 from app.services import depot
 from app.services.applicabilite import codes_egaux
 from app.ui.composants_depot import CEPage, DPEPage, DropZone, _field_col, _info_btn
@@ -476,7 +481,7 @@ class DialogueDepot(QtWidgets.QDialog):
         self._drop_zone.browse_btn.clicked.connect(self._choose_file)
         left_col.addWidget(self._drop_zone)
 
-        fmt_lbl = QtWidgets.QLabel("Formats acceptés : PDF, DOCX, XLSX (max. 50 Mo)", card)
+        fmt_lbl = QtWidgets.QLabel(f"Formats acceptés : {', '.join(FORMATS_DEPOT)}", card)
         fmt_lbl.setObjectName("formatHint")
         left_col.addWidget(fmt_lbl)
 
@@ -677,7 +682,7 @@ class DialogueDepot(QtWidgets.QDialog):
             self,
             "Choisir un justificatif",
             str(Path.home()),
-            "Documents (*.pdf *.docx *.xlsx *.PDF *.DOCX *.XLSX)",
+            "Documents (" + " ".join(f"*{e}" for e in EXTENSIONS_DEPOT) + ")",
         )
         if chemin:
             self._apply_file(Path(chemin))

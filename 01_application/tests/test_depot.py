@@ -34,12 +34,31 @@ def _completion(projet, f, r, livrable):
     )
 
 
-def test_s7_r7_formats_acceptes(projet_essai, tmp_path):
+def test_e2_formats_etendus(projet_essai, tmp_path):
+    for nom in (
+        "a.PDF",
+        "b.doc",
+        "c.xlsm",
+        "d.csv",
+        "e.pptx",
+        "f.JPG",
+        "g.tiff",
+        "h.msg",
+        "i.zip",
+        "j.txt",
+    ):
+        assert depot.format_accepte(tmp_path / nom), nom
+    for nom in ("a.exe", "b.html", "c", "d.7z"):
+        assert not depot.format_accepte(tmp_path / nom), nom
     saisie = _ce(
-        projet_essai, [("ACME", "REF-001")], _fichier(tmp_path, "photo.png"), ["2006/42/UE"]
+        projet_essai, [("ACME", "REF-001")], _fichier(tmp_path, "virus.exe"), ["2006/42/UE"]
     )
-    assert depot.verifier(saisie, LIVRABLES).startswith("Format de fichier non accepté")
-    assert depot.format_accepte(tmp_path / "a.PDF") and depot.format_accepte(tmp_path / "a.xlsx")
+    assert depot.verifier(saisie, LIVRABLES) == (
+        "Format de fichier non accepté. Formats acceptés : PDF, Word, Excel, PowerPoint, "
+        "Photos, Mails, Archives, Texte."
+    )
+    saisie.fichier = _fichier(tmp_path, "photo.png")
+    assert depot.verifier(saisie, LIVRABLES) is None
 
 
 def test_s8_s16_selection(projet_essai):

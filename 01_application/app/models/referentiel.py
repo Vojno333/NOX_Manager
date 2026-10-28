@@ -108,6 +108,19 @@ STATUT_ESTIMATION = "Estimation"
 CLASSEMENTS_CECC = ("NC", "DU", "DI (Défense item)")
 LICENCE_OUI_NON = ("Oui", "Non")
 
+# Formats acceptés au dépôt (E2), par famille : liste fermée validée le 2026-10-28.
+FORMATS_DEPOT = {
+    "PDF": (".pdf",),
+    "Word": (".doc", ".docx"),
+    "Excel": (".xls", ".xlsx", ".xlsm", ".csv"),
+    "PowerPoint": (".ppt", ".pptx"),
+    "Photos": (".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp"),
+    "Mails": (".msg", ".eml"),
+    "Archives": (".zip",),
+    "Texte": (".txt",),
+}
+EXTENSIONS_DEPOT = tuple(e for extensions in FORMATS_DEPOT.values() for e in extensions)
+
 # Pays d'origine (point 4a du CECC), dans l'ordre du menu actuel, doublons compris.
 PAYS_ORIGINE_4A = (
     "AF-Afghanistan",
