@@ -222,3 +222,14 @@ def statistiques_disque(dossier: Path) -> tuple[int, int]:
 def etat_utilisateur() -> EtatUtilisateur:
     """Préférences de l'utilisateur courant (projets récents, emplacements)."""
     return EtatUtilisateur()
+
+
+def ouvrir_document(chemin: Path) -> tuple[str, str] | None:
+    """Ouvre un document du projet ; (titre, message) d'erreur, ou None."""
+    if not arborescence.existe(chemin):
+        return "Fichier introuvable", f"Impossible d'ouvrir :\n\n{chemin}"
+    try:
+        arborescence.ouvrir_avec_l_application(chemin)
+    except Exception as e:  # application absente, droits… : message système affiché
+        return "Erreur d'ouverture", str(e)
+    return None
