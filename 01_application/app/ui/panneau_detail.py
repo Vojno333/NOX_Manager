@@ -59,6 +59,7 @@ class DetailPanel(QtWidgets.QFrame):
             }}
         """)
         self._row_data: LigneSuivi | None = None
+        self.lecture_seule = False  # E14 : ni modification ni suppression
         self._nb_docs = 0
         self._build()
 
@@ -363,9 +364,9 @@ class DetailPanel(QtWidgets.QFrame):
 
         # Buttons
         self._btn_view.setText(f"📄  Voir les documents ({self._nb_docs})")
-        self._btn_modify.setEnabled(True)
+        self._btn_modify.setEnabled(not self.lecture_seule)
         self._btn_view.setEnabled(True)
-        self._btn_delete.setEnabled(True)
+        self._btn_delete.setEnabled(not self.lecture_seule)
 
     def _clear_info(self):
         while self._info_lay.count():
@@ -427,6 +428,9 @@ class DetailPanel(QtWidgets.QFrame):
         libelle = "Remplacer le justificatif…"
         if len(codes) > 1:
             libelle = f"Remplacer le justificatif ({len(codes)} exigences)…"
+        if self.lecture_seule:
+            menu.exec(self._tbl_docs.viewport().mapToGlobal(pos))
+            return
         menu.addAction(libelle).triggered.connect(
             lambda: self.requestReplaceJustif.emit(row_data, codes)
         )
