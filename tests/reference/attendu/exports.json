@@ -1,0 +1,773 @@
+{
+  "BDD_CE_N999.xlsx": {
+    "onglet": "BDD CE AFF-ESSAI",
+    "cellules": {
+      "B2": {
+        "valeur": "BASE DE DONNEES CE - AFF-ESSAI"
+      },
+      "B4": {
+        "valeur": "Référence Number "
+      },
+      "C4": {
+        "valeur": "French Title"
+      },
+      "D4": {
+        "valeur": "Manufacturer Part Number"
+      },
+      "E4": {
+        "valeur": "Fournisseur \nDistributeur"
+      },
+      "F4": {
+        "valeur": "N° de la commande"
+      },
+      "G4": {
+        "valeur": "Etat CE"
+      },
+      "H4": {
+        "valeur": "Directive 2006/42/UE"
+      },
+      "I4": {
+        "valeur": "Directive 2014/35/UE "
+      },
+      "J4": {
+        "valeur": "ROHS : 2011/65/UE"
+      },
+      "K4": {
+        "valeur": "ROHS : 2015/863"
+      },
+      "L4": {
+        "valeur": "Directive 2014/30/UE"
+      },
+      "M4": {
+        "valeur": "Directive \n2014/68/UE"
+      },
+      "N4": {
+        "valeur": "Autres"
+      },
+      "B5": {
+        "valeur": "REF-001"
+      },
+      "C5": {
+        "valeur": "Vis inox M6"
+      },
+      "D5": {
+        "valeur": "MNP-001"
+      },
+      "E5": {
+        "valeur": "ACME"
+      },
+      "F5": {
+        "valeur": "CMD-1B"
+      },
+      "H5": {
+        "valeur": "CE_ACME_REF-001.pdf",
+        "lien": "<PROJET>/BDD CE N999/Documents/ACME/REF-001/CE_ACME_REF-001.pdf"
+      },
+      "I5": {
+        "valeur": "N/A"
+      },
+      "L5": {
+        "valeur": "CE_ACME_REF-001.pdf",
+        "lien": "<PROJET>/BDD CE N999/Documents/ACME/REF-001/CE_ACME_REF-001.pdf"
+      },
+      "M5": {
+        "valeur": "N/A"
+      },
+      "B6": {
+        "valeur": "REF-002"
+      },
+      "C6": {
+        "valeur": "Écrou frein"
+      },
+      "D6": {
+        "valeur": "MNP-002"
+      },
+      "E6": {
+        "valeur": "ACME"
+      },
+      "F6": {
+        "valeur": "CMD-2"
+      },
+      "H6": {
+        "valeur": "CE_ACME_REF-002_estimation.pdf",
+        "lien": "<PROJET>/BDD CE N999/Documents/ACME/REF-002/CE_ACME_REF-002_estimation.pdf"
+      },
+      "J6": {
+        "valeur": "N/A"
+      },
+      "K6": {
+        "valeur": "N/A"
+      },
+      "L6": {
+        "valeur": "N/A"
+      },
+      "M6": {
+        "valeur": "N/A"
+      },
+      "B7": {
+        "valeur": "REF-010"
+      },
+      "C7": {
+        "valeur": "Moteur 24V"
+      },
+      "D7": {
+        "valeur": "MPN-BETA"
+      },
+      "E7": {
+        "valeur": "BETA"
+      },
+      "F7": {
+        "valeur": "CMD-10"
+      },
+      "J7": {
+        "valeur": "DPE_BETA_REF-010.pdf",
+        "lien": "<PROJET>/BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+      },
+      "K7": {
+        "valeur": "DPE_BETA_REF-010.pdf",
+        "lien": "<PROJET>/BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+      },
+      "B8": {
+        "valeur": "REF-030"
+      },
+      "C8": {
+        "valeur": "Câble"
+      },
+      "D8": {
+        "valeur": "MNP-030"
+      },
+      "E8": {
+        "valeur": "DELTA"
+      },
+      "F8": {
+        "valeur": "CMD-30"
+      },
+      "B9": {
+        "valeur": "REF-040"
+      },
+      "C9": {
+        "valeur": "Capot"
+      },
+      "D9": {
+        "valeur": "MPN-EPS"
+      },
+      "E9": {
+        "valeur": "EPS"
+      },
+      "H9": {
+        "valeur": "N/A"
+      },
+      "I9": {
+        "valeur": "N/A"
+      },
+      "J9": {
+        "valeur": "N/A"
+      },
+      "K9": {
+        "valeur": "N/A"
+      },
+      "L9": {
+        "valeur": "N/A"
+      },
+      "M9": {
+        "valeur": "N/A"
+      },
+      "B10": {
+        "valeur": "REF-020"
+      },
+      "C10": {
+        "valeur": "Carte E/S"
+      },
+      "D10": {
+        "valeur": "MPN-GAMMA"
+      },
+      "E10": {
+        "valeur": "GAMMA"
+      },
+      "F10": {
+        "valeur": "CMD-20"
+      },
+      "B14": {
+        "valeur": "Taux de couverture global \"prouvé\""
+      },
+      "C14": {
+        "valeur": "=AVERAGE(H14:M14)"
+      },
+      "H14": {
+        "valeur": "=IFERROR((COUNTA(H5:H10)-COUNTIF(H5:H10,\"*estimation*\")-COUNTIF(H5:H10,\"N/A\"))/(COUNTBLANK(H5:H10)+COUNTA(H5:H10)-COUNTIF(H5:H10,\"N/A\")),0)"
+      },
+      "I14": {
+        "valeur": "=IFERROR((COUNTA(I5:I10)-COUNTIF(I5:I10,\"*estimation*\")-COUNTIF(I5:I10,\"N/A\"))/(COUNTBLANK(I5:I10)+COUNTA(I5:I10)-COUNTIF(I5:I10,\"N/A\")),0)"
+      },
+      "J14": {
+        "valeur": "=IFERROR((COUNTA(J5:J10)-COUNTIF(J5:J10,\"*estimation*\")-COUNTIF(J5:J10,\"N/A\"))/(COUNTBLANK(J5:J10)+COUNTA(J5:J10)-COUNTIF(J5:J10,\"N/A\")),0)"
+      },
+      "K14": {
+        "valeur": "=IFERROR((COUNTA(K5:K10)-COUNTIF(K5:K10,\"*estimation*\")-COUNTIF(K5:K10,\"N/A\"))/(COUNTBLANK(K5:K10)+COUNTA(K5:K10)-COUNTIF(K5:K10,\"N/A\")),0)"
+      },
+      "L14": {
+        "valeur": "=IFERROR((COUNTA(L5:L10)-COUNTIF(L5:L10,\"*estimation*\")-COUNTIF(L5:L10,\"N/A\"))/(COUNTBLANK(L5:L10)+COUNTA(L5:L10)-COUNTIF(L5:L10,\"N/A\")),0)"
+      },
+      "M14": {
+        "valeur": "=IFERROR((COUNTA(M5:M10)-COUNTIF(M5:M10,\"*estimation*\")-COUNTIF(M5:M10,\"N/A\"))/(COUNTBLANK(M5:M10)+COUNTA(M5:M10)-COUNTIF(M5:M10,\"N/A\")),0)"
+      },
+      "B15": {
+        "valeur": "Taux de couverture global \"estimé\""
+      },
+      "C15": {
+        "valeur": "=AVERAGE(H15:M15)"
+      },
+      "H15": {
+        "valeur": "=IFERROR((COUNTA(H5:H10)-COUNTIF(H5:H10,\"N/A\"))/(COUNTBLANK(H5:H10)+COUNTA(H5:H10)-COUNTIF(H5:H10,\"N/A\")),0)"
+      },
+      "I15": {
+        "valeur": "=IFERROR((COUNTA(I5:I10)-COUNTIF(I5:I10,\"N/A\"))/(COUNTBLANK(I5:I10)+COUNTA(I5:I10)-COUNTIF(I5:I10,\"N/A\")),0)"
+      },
+      "J15": {
+        "valeur": "=IFERROR((COUNTA(J5:J10)-COUNTIF(J5:J10,\"N/A\"))/(COUNTBLANK(J5:J10)+COUNTA(J5:J10)-COUNTIF(J5:J10,\"N/A\")),0)"
+      },
+      "K15": {
+        "valeur": "=IFERROR((COUNTA(K5:K10)-COUNTIF(K5:K10,\"N/A\"))/(COUNTBLANK(K5:K10)+COUNTA(K5:K10)-COUNTIF(K5:K10,\"N/A\")),0)"
+      },
+      "L15": {
+        "valeur": "=IFERROR((COUNTA(L5:L10)-COUNTIF(L5:L10,\"N/A\"))/(COUNTBLANK(L5:L10)+COUNTA(L5:L10)-COUNTIF(L5:L10,\"N/A\")),0)"
+      },
+      "M15": {
+        "valeur": "=IFERROR((COUNTA(M5:M10)-COUNTIF(M5:M10,\"N/A\"))/(COUNTBLANK(M5:M10)+COUNTA(M5:M10)-COUNTIF(M5:M10,\"N/A\")),0)"
+      }
+    }
+  },
+  "BDD_CECC_N999.xlsx": {
+    "onglet": "BDD CECC AFF-ESSAI",
+    "cellules": {
+      "B2": {
+        "valeur": "BASE DE DONNEES CECC - AFF-ESSAI"
+      },
+      "B4": {
+        "valeur": "Référence THALES"
+      },
+      "C4": {
+        "valeur": "Libellé de l'équipement"
+      },
+      "D4": {
+        "valeur": "Référence fabricant"
+      },
+      "E4": {
+        "valeur": "Fournisseur \nDistributeur"
+      },
+      "F4": {
+        "valeur": "N° de la commance"
+      },
+      "G4": {
+        "valeur": "Fournisseur Doc / MANUFACTURER"
+      },
+      "H4": {
+        "valeur": "Manufacturer Part Number"
+      },
+      "I4": {
+        "valeur": "CECC : Etat"
+      },
+      "J4": {
+        "valeur": "CECC : Date "
+      },
+      "K4": {
+        "valeur": "Nom : CECC"
+      },
+      "L4": {
+        "valeur": "CECC \nClassement "
+      },
+      "M4": {
+        "valeur": "Catégorie\n(EAR99 / Code ECCN / Code ML ITAR)"
+      },
+      "N4": {
+        "valeur": "Licence\nOui/ Non"
+      },
+      "O4": {
+        "valeur": "N° Licence"
+      },
+      "P4": {
+        "valeur": "Pays Origine 4a"
+      },
+      "Q4": {
+        "valeur": "EAR99 Value (USD)"
+      },
+      "R4": {
+        "valeur": "ECCN value (USD)"
+      },
+      "S4": {
+        "valeur": "Composant controlés à l'export et intégrés dans l'article\n (10.1)"
+      },
+      "T4": {
+        "valeur": "Pays d'origine \n10.2"
+      },
+      "U4": {
+        "valeur": "Classement à l'export\n10.5"
+      },
+      "V4": {
+        "valeur": "Code douanier / Tariff Code\n8."
+      },
+      "B5": {
+        "valeur": "REF-001"
+      },
+      "C5": {
+        "valeur": "Vis inox M6"
+      },
+      "D5": {
+        "valeur": "MNP-001"
+      },
+      "E5": {
+        "valeur": "ACME"
+      },
+      "F5": {
+        "valeur": "CMD-1B"
+      },
+      "B6": {
+        "valeur": "REF-002"
+      },
+      "C6": {
+        "valeur": "Écrou frein"
+      },
+      "D6": {
+        "valeur": "MNP-002"
+      },
+      "E6": {
+        "valeur": "ACME"
+      },
+      "F6": {
+        "valeur": "CMD-2"
+      },
+      "B7": {
+        "valeur": "REF-010"
+      },
+      "C7": {
+        "valeur": "Moteur 24V"
+      },
+      "D7": {
+        "valeur": "MPN-BETA"
+      },
+      "E7": {
+        "valeur": "BETA"
+      },
+      "F7": {
+        "valeur": "CMD-10"
+      },
+      "G7": {
+        "valeur": "BETA"
+      },
+      "H7": {
+        "valeur": "MPN-BETA"
+      },
+      "I7": {
+        "valeur": "Relancé"
+      },
+      "K7": {
+        "valeur": "CECC BETA",
+        "lien": "<PROJET>/BDD CECC N999/Documents/BETA/REF-010/CECC_BETA_REF-010 (1).pdf"
+      },
+      "P7": {
+        "valeur": "FR-France"
+      },
+      "B8": {
+        "valeur": "REF-030"
+      },
+      "C8": {
+        "valeur": "Câble"
+      },
+      "D8": {
+        "valeur": "MNP-030"
+      },
+      "E8": {
+        "valeur": "DELTA"
+      },
+      "F8": {
+        "valeur": "CMD-30"
+      },
+      "B9": {
+        "valeur": "REF-040"
+      },
+      "C9": {
+        "valeur": "Capot"
+      },
+      "D9": {
+        "valeur": "MPN-EPS"
+      },
+      "E9": {
+        "valeur": "EPS"
+      },
+      "G9": {
+        "valeur": "EPS"
+      },
+      "H9": {
+        "valeur": "MPN-EPS"
+      },
+      "I9": {
+        "valeur": "Estimation"
+      },
+      "K9": {
+        "valeur": "CECC EPS",
+        "lien": "<PROJET>/BDD CECC N999/Documents/EPS/REF-040/CECC_EPS_REF-040.pdf"
+      },
+      "B10": {
+        "valeur": "REF-020"
+      },
+      "C10": {
+        "valeur": "Carte E/S"
+      },
+      "D10": {
+        "valeur": "MPN-GAMMA"
+      },
+      "E10": {
+        "valeur": "GAMMA"
+      },
+      "F10": {
+        "valeur": "CMD-20"
+      },
+      "G10": {
+        "valeur": "GAMMA Inc"
+      },
+      "H10": {
+        "valeur": "MPN-GAMMA"
+      },
+      "I10": {
+        "valeur": "Validé"
+      },
+      "J10": {
+        "valeur": "02/03/2026"
+      },
+      "K10": {
+        "valeur": "Déclaration GAMMA",
+        "lien": "<PROJET>/BDD CECC N999/Documents/GAMMA/REF-020/CECC_GAMMA_REF-020 (1).pdf"
+      },
+      "L10": {
+        "valeur": "DU"
+      },
+      "M10": {
+        "valeur": "5A992"
+      },
+      "N10": {
+        "valeur": "Non"
+      },
+      "P10": {
+        "valeur": "US-États-Unis"
+      },
+      "R10": {
+        "valeur": "120"
+      },
+      "B14": {
+        "valeur": "Taux de couverture global \"prouvé\""
+      },
+      "C14": {
+        "valeur": "=IFERROR(COUNTIF($I$5:$I$10,\"Validé\")/(COUNTIF($I$5:$I$10,\"Validé\")+COUNTIF($I$5:$I$10,\"Relancé\")+COUNTIF($I$5:$I$10,\"Non conforme\")+COUNTIF($I$5:$I$10,\"Estimation\")),0)"
+      },
+      "B15": {
+        "valeur": "Taux de couverture global \"Estimé\""
+      },
+      "C15": {
+        "valeur": "=IFERROR((COUNTIF($I$5:$I$10,\"Validé\")+COUNTIF($I$5:$I$10,\"Estimation\"))/(COUNTIF($I$5:$I$10,\"Validé\")+COUNTIF($I$5:$I$10,\"Relancé\")+COUNTIF($I$5:$I$10,\"Non conforme\")+COUNTIF($I$5:$I$10,\"Estimation\")),0)"
+      }
+    }
+  },
+  "BDD_DPE_N999.xlsx": {
+    "onglet": "BDD DPE AFF-ESSAI",
+    "cellules": {
+      "B2": {
+        "valeur": "BASE DE DONNEES DPE - AFF-ESSAI"
+      },
+      "B4": {
+        "valeur": "Référence Number "
+      },
+      "C4": {
+        "valeur": "French Title"
+      },
+      "D4": {
+        "valeur": "Manufacturer Part Number"
+      },
+      "E4": {
+        "valeur": "Fournisseur \nDistributeur"
+      },
+      "F4": {
+        "valeur": "N° de la commande"
+      },
+      "G4": {
+        "valeur": "DPE : Etat"
+      },
+      "H4": {
+        "valeur": "2011/65/UE\nRoHS"
+      },
+      "I4": {
+        "valeur": "2012/19/UE\nDEEE"
+      },
+      "J4": {
+        "valeur": "2006/66/CE\nPiles et accumulateurs "
+      },
+      "K4": {
+        "valeur": "1907/2006\nREACh"
+      },
+      "L4": {
+        "valeur": "2019/1021\nPOP"
+      },
+      "M4": {
+        "valeur": " 1005/2009\nSAO"
+      },
+      "N4": {
+        "valeur": "517/2014\nG+N4:O4 effet de serre fluorés"
+      },
+      "O4": {
+        "valeur": "2017/852\nMercure"
+      },
+      "P4": {
+        "valeur": "528/2012\nBiocides"
+      },
+      "Q4": {
+        "valeur": "2013/59/Euratom \nRayonnements ionisants"
+      },
+      "R4": {
+        "valeur": "2017/821\nDevoir de diligence"
+      },
+      "S4": {
+        "valeur": "2016/1628\nLes gaz polluants et les particules polluantes "
+      },
+      "B5": {
+        "valeur": "REF-001"
+      },
+      "C5": {
+        "valeur": "Vis inox M6"
+      },
+      "D5": {
+        "valeur": "MNP-001"
+      },
+      "E5": {
+        "valeur": "ACME"
+      },
+      "F5": {
+        "valeur": "CMD-1B"
+      },
+      "B6": {
+        "valeur": "REF-002"
+      },
+      "C6": {
+        "valeur": "Écrou frein"
+      },
+      "D6": {
+        "valeur": "MNP-002"
+      },
+      "E6": {
+        "valeur": "ACME"
+      },
+      "F6": {
+        "valeur": "CMD-2"
+      },
+      "B7": {
+        "valeur": "REF-010"
+      },
+      "C7": {
+        "valeur": "Moteur 24V"
+      },
+      "D7": {
+        "valeur": "MPN-BETA"
+      },
+      "E7": {
+        "valeur": "BETA"
+      },
+      "F7": {
+        "valeur": "CMD-10"
+      },
+      "H7": {
+        "valeur": "DPE_BETA_REF-010.pdf",
+        "lien": "<PROJET>/BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+      },
+      "I7": {
+        "valeur": "N/A"
+      },
+      "J7": {
+        "valeur": "N/A"
+      },
+      "L7": {
+        "valeur": "N/A"
+      },
+      "M7": {
+        "valeur": "N/A"
+      },
+      "N7": {
+        "valeur": "N/A"
+      },
+      "O7": {
+        "valeur": "N/A"
+      },
+      "P7": {
+        "valeur": "N/A"
+      },
+      "Q7": {
+        "valeur": "N/A"
+      },
+      "R7": {
+        "valeur": "N/A"
+      },
+      "S7": {
+        "valeur": "N/A"
+      },
+      "B8": {
+        "valeur": "REF-030"
+      },
+      "C8": {
+        "valeur": "Câble"
+      },
+      "D8": {
+        "valeur": "MNP-030"
+      },
+      "E8": {
+        "valeur": "DELTA"
+      },
+      "F8": {
+        "valeur": "CMD-30"
+      },
+      "H8": {
+        "valeur": "N/A"
+      },
+      "I8": {
+        "valeur": "N/A"
+      },
+      "J8": {
+        "valeur": "N/A"
+      },
+      "K8": {
+        "valeur": "DPE_DELTA_REF-030.pdf"
+      },
+      "L8": {
+        "valeur": "N/A"
+      },
+      "M8": {
+        "valeur": "N/A"
+      },
+      "N8": {
+        "valeur": "N/A"
+      },
+      "O8": {
+        "valeur": "N/A"
+      },
+      "P8": {
+        "valeur": "N/A"
+      },
+      "Q8": {
+        "valeur": "N/A"
+      },
+      "R8": {
+        "valeur": "N/A"
+      },
+      "S8": {
+        "valeur": "N/A"
+      },
+      "B9": {
+        "valeur": "REF-040"
+      },
+      "C9": {
+        "valeur": "Capot"
+      },
+      "D9": {
+        "valeur": "MPN-EPS"
+      },
+      "E9": {
+        "valeur": "EPS"
+      },
+      "B10": {
+        "valeur": "REF-020"
+      },
+      "C10": {
+        "valeur": "Carte E/S"
+      },
+      "D10": {
+        "valeur": "MPN-GAMMA"
+      },
+      "E10": {
+        "valeur": "GAMMA"
+      },
+      "F10": {
+        "valeur": "CMD-20"
+      },
+      "B14": {
+        "valeur": "Taux de couverture global \"prouvé\""
+      },
+      "C14": {
+        "valeur": "=AVERAGE(H14:S14)"
+      },
+      "H14": {
+        "valeur": "=IFERROR((COUNTA(H5:H10)-COUNTIF(H5:H10,\"*estimation*\")-COUNTIF(H5:H10,\"N/A\"))/(COUNTBLANK(H5:H10)+COUNTA(H5:H10)-COUNTIF(H5:H10,\"N/A\")),0)"
+      },
+      "I14": {
+        "valeur": "=IFERROR((COUNTA(I5:I10)-COUNTIF(I5:I10,\"*estimation*\")-COUNTIF(I5:I10,\"N/A\"))/(COUNTBLANK(I5:I10)+COUNTA(I5:I10)-COUNTIF(I5:I10,\"N/A\")),0)"
+      },
+      "J14": {
+        "valeur": "=IFERROR((COUNTA(J5:J10)-COUNTIF(J5:J10,\"*estimation*\")-COUNTIF(J5:J10,\"N/A\"))/(COUNTBLANK(J5:J10)+COUNTA(J5:J10)-COUNTIF(J5:J10,\"N/A\")),0)"
+      },
+      "K14": {
+        "valeur": "=IFERROR((COUNTA(K5:K10)-COUNTIF(K5:K10,\"*estimation*\")-COUNTIF(K5:K10,\"N/A\"))/(COUNTBLANK(K5:K10)+COUNTA(K5:K10)-COUNTIF(K5:K10,\"N/A\")),0)"
+      },
+      "L14": {
+        "valeur": "=IFERROR((COUNTA(L5:L10)-COUNTIF(L5:L10,\"*estimation*\")-COUNTIF(L5:L10,\"N/A\"))/(COUNTBLANK(L5:L10)+COUNTA(L5:L10)-COUNTIF(L5:L10,\"N/A\")),0)"
+      },
+      "M14": {
+        "valeur": "=IFERROR((COUNTA(M5:M10)-COUNTIF(M5:M10,\"*estimation*\")-COUNTIF(M5:M10,\"N/A\"))/(COUNTBLANK(M5:M10)+COUNTA(M5:M10)-COUNTIF(M5:M10,\"N/A\")),0)"
+      },
+      "N14": {
+        "valeur": "=IFERROR((COUNTA(N5:N10)-COUNTIF(N5:N10,\"*estimation*\")-COUNTIF(N5:N10,\"N/A\"))/(COUNTBLANK(N5:N10)+COUNTA(N5:N10)-COUNTIF(N5:N10,\"N/A\")),0)"
+      },
+      "O14": {
+        "valeur": "=IFERROR((COUNTA(O5:O10)-COUNTIF(O5:O10,\"*estimation*\")-COUNTIF(O5:O10,\"N/A\"))/(COUNTBLANK(O5:O10)+COUNTA(O5:O10)-COUNTIF(O5:O10,\"N/A\")),0)"
+      },
+      "P14": {
+        "valeur": "=IFERROR((COUNTA(P5:P10)-COUNTIF(P5:P10,\"*estimation*\")-COUNTIF(P5:P10,\"N/A\"))/(COUNTBLANK(P5:P10)+COUNTA(P5:P10)-COUNTIF(P5:P10,\"N/A\")),0)"
+      },
+      "Q14": {
+        "valeur": "=IFERROR((COUNTA(Q5:Q10)-COUNTIF(Q5:Q10,\"*estimation*\")-COUNTIF(Q5:Q10,\"N/A\"))/(COUNTBLANK(Q5:Q10)+COUNTA(Q5:Q10)-COUNTIF(Q5:Q10,\"N/A\")),0)"
+      },
+      "R14": {
+        "valeur": "=IFERROR((COUNTA(R5:R10)-COUNTIF(R5:R10,\"*estimation*\")-COUNTIF(R5:R10,\"N/A\"))/(COUNTBLANK(R5:R10)+COUNTA(R5:R10)-COUNTIF(R5:R10,\"N/A\")),0)"
+      },
+      "S14": {
+        "valeur": "=IFERROR((COUNTA(S5:S10)-COUNTIF(S5:S10,\"*estimation*\")-COUNTIF(S5:S10,\"N/A\"))/(COUNTBLANK(S5:S10)+COUNTA(S5:S10)-COUNTIF(S5:S10,\"N/A\")),0)"
+      },
+      "B15": {
+        "valeur": "Taux de couverture global \"estimé\""
+      },
+      "C15": {
+        "valeur": "=AVERAGE(H15:S15)"
+      },
+      "H15": {
+        "valeur": "=IFERROR((COUNTA(H5:H10)-COUNTIF(H5:H10,\"N/A\"))/(COUNTBLANK(H5:H10)+COUNTA(H5:H10)-COUNTIF(H5:H10,\"N/A\")),0)"
+      },
+      "I15": {
+        "valeur": "=IFERROR((COUNTA(I5:I10)-COUNTIF(I5:I10,\"N/A\"))/(COUNTBLANK(I5:I10)+COUNTA(I5:I10)-COUNTIF(I5:I10,\"N/A\")),0)"
+      },
+      "J15": {
+        "valeur": "=IFERROR((COUNTA(J5:J10)-COUNTIF(J5:J10,\"N/A\"))/(COUNTBLANK(J5:J10)+COUNTA(J5:J10)-COUNTIF(J5:J10,\"N/A\")),0)"
+      },
+      "K15": {
+        "valeur": "=IFERROR((COUNTA(K5:K10)-COUNTIF(K5:K10,\"N/A\"))/(COUNTBLANK(K5:K10)+COUNTA(K5:K10)-COUNTIF(K5:K10,\"N/A\")),0)"
+      },
+      "L15": {
+        "valeur": "=IFERROR((COUNTA(L5:L10)-COUNTIF(L5:L10,\"N/A\"))/(COUNTBLANK(L5:L10)+COUNTA(L5:L10)-COUNTIF(L5:L10,\"N/A\")),0)"
+      },
+      "M15": {
+        "valeur": "=IFERROR((COUNTA(M5:M10)-COUNTIF(M5:M10,\"N/A\"))/(COUNTBLANK(M5:M10)+COUNTA(M5:M10)-COUNTIF(M5:M10,\"N/A\")),0)"
+      },
+      "N15": {
+        "valeur": "=IFERROR((COUNTA(N5:N10)-COUNTIF(N5:N10,\"N/A\"))/(COUNTBLANK(N5:N10)+COUNTA(N5:N10)-COUNTIF(N5:N10,\"N/A\")),0)"
+      },
+      "O15": {
+        "valeur": "=IFERROR((COUNTA(O5:O10)-COUNTIF(O5:O10,\"N/A\"))/(COUNTBLANK(O5:O10)+COUNTA(O5:O10)-COUNTIF(O5:O10,\"N/A\")),0)"
+      },
+      "P15": {
+        "valeur": "=IFERROR((COUNTA(P5:P10)-COUNTIF(P5:P10,\"N/A\"))/(COUNTBLANK(P5:P10)+COUNTA(P5:P10)-COUNTIF(P5:P10,\"N/A\")),0)"
+      },
+      "Q15": {
+        "valeur": "=IFERROR((COUNTA(Q5:Q10)-COUNTIF(Q5:Q10,\"N/A\"))/(COUNTBLANK(Q5:Q10)+COUNTA(Q5:Q10)-COUNTIF(Q5:Q10,\"N/A\")),0)"
+      },
+      "R15": {
+        "valeur": "=IFERROR((COUNTA(R5:R10)-COUNTIF(R5:R10,\"N/A\"))/(COUNTBLANK(R5:R10)+COUNTA(R5:R10)-COUNTIF(R5:R10,\"N/A\")),0)"
+      },
+      "S15": {
+        "valeur": "=IFERROR((COUNTA(S5:S10)-COUNTIF(S5:S10,\"N/A\"))/(COUNTBLANK(S5:S10)+COUNTA(S5:S10)-COUNTIF(S5:S10,\"N/A\")),0)"
+      }
+    }
+  }
+}

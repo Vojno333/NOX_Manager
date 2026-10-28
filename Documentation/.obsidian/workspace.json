@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "00 - Index.md",
+                "file": "03 - Piloter/Bugs connus.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "00 - Index"
+              "title": "Bugs connus"
             }
           }
         ]
@@ -176,9 +176,9 @@
   },
   "left-ribbon": {
     "hiddenItems": {
+      "canvas:Créer un nouveau canvas": false,
       "switcher:Ouvrir le sélecteur rapide": false,
       "graph:Ouvrir la vue graphique": false,
-      "canvas:Créer une nouvelle toile": false,
       "daily-notes:Ouvrir la note quotidienne": false,
       "templates:Insérer le modèle": false,
       "command-palette:Ouvrir la palette de commandes": false,
@@ -187,6 +187,7 @@
   },
   "active": "53203efa39e1a0ee",
   "lastOpenFiles": [
+    "00 - Index.md",
     "03 - Piloter/Journal de dev.md.tmp.12140.c2ab5e27cd12",
     "01 - Comprendre/sedDWXlO3",
     "03 - Piloter/Backlog.md.tmp.12140.03a48603785b",
@@ -199,11 +200,9 @@
     "04 - Utilisateurs/Guide utilisateur.md.tmp",
     "03 - Piloter/Journal de dev.md.tmp",
     "03 - Piloter/Décisions (ADR).md.tmp",
-    "03 - Piloter/Dette technique.md.tmp",
     "_Modèles/Modèle - Bug.md",
     "_Modèles/Modèle - ADR.md",
     "_Modèles/Modèle - Entrée de journal.md",
-    "00 - Index.md",
     "Environnement de dev.md",
     "04 - Utilisateurs/Guide utilisateur.md",
     "03 - Piloter/Décisions (ADR).md",

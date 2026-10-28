@@ -1,0 +1,7 @@
+{
+  "nom": "NOX Manager",
+  "journalisation": "info",
+  "etat_utilisateur": "~/.nox_manager/nox_state.json",
+  "projets_recents_max": 10,
+  "articles_max": 1000
+}
