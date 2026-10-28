@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (prochaine tâche : 1)
+- Étape en cours : R8 — Réaliser (prochaine tâche : 2)
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
@@ -17,8 +17,10 @@
 
 - R7 Liste des tâches — `docs/travaux.md` (validée le 2026-10-28) : 23 tâches de reconstruction en 10 vagues (dernière : supprimer `00_ancien/`), puis 15 tâches d'évolution (E1 en deux temps) en 6 vagues. Toutes les règles R1–R31 et E1–E14 couvertes.
 
+- R8 en cours — tâche 1 (ressources et référentiels) faite : `ressources/`, `core/config.ressource()`, `models/referentiel.py`.
+
 ## Reste à faire
-- R8 Réaliser, une tâche à la fois, en commençant par la vague 1 (tâches 1, 2, 3)
+- R8 Réaliser, une tâche à la fois : vague 1, tâches 2 et 3
 
 ## Angles morts signalés en R7
 - E1 suppose un changement du format des données (identifiant de ligne) : décision à écrire avant la tâche 37.
@@ -29,7 +31,8 @@
 - aucune
 
 ## À ne pas oublier
-- Rien n'est commité (demande de l'utilisateur). Au premier commit autorisé : poser l'étiquette `v1-avant-refonte` sur la version d'avant la reprise, et versionner `uv.lock`.
+- Commits autorisés le 2026-10-28. Étiquette `v1-avant-refonte` posée sur d7f13be, reprise commitée sur `develop` (`uv.lock` versionné). Rien n'est poussé sur GitHub.
+- Liste des pays (menu CECC) : Algérie, Belgique et Chine y figurent deux fois. Reprise à l'identique ; à proposer en évolution.
 - Faire remonter au responsable de la méthode le besoin d'une option « application de bureau » dans le catalogue (décision 0002).
 - Contrôles automatiques : la CI du gabarit vise GitLab, le dépôt est sur GitHub ; à brancher (lint, tests, couches, référence) lors d'une tâche dédiée.
 - Emplacement de diffusion de l'exécutable : à documenter.
