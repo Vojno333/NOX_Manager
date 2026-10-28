@@ -17,7 +17,7 @@ from PySide6.QtGui import QColor, QFont
 
 from app.models.projet import Projet
 from app.models.suivi import LigneSuivi
-from app.services import completion, corrections, depot, export, projets
+from app.services import completion, corrections, depot, export, projets, verrou
 from app.ui.elements_suivi import (
     ALT_ROW,
     BG,
@@ -216,10 +216,40 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         self._toutes_les_lignes: list[LigneSuivi] = []
         self._lignes_filtrees: list[LigneSuivi] = []
         self.lignes_par_onglet: dict[str, list[LigneSuivi]] = {}
+        self.lecture_seule = False
+        self._boutons_modification: list[QtWidgets.QPushButton] = []
         self.setWindowTitle(f"NOX_Manager — {self._nom_affiche()}")
         ajuster_et_centrer(self, 1400, 860, largeur_min=1000, hauteur_min=620)
         self._build_ui()
+        self._prendre_verrou()
         self.charger()
+
+    # ── Verrou de modification (E14, décision 0004) ───────────────────────────
+    def _prendre_verrou(self):
+        autre = verrou.prendre(self.projet.dossier)
+        if autre is None:
+            self._signe_de_vie = QtCore.QTimer(self)
+            self._signe_de_vie.timeout.connect(lambda: verrou.rafraichir(self.projet.dossier))
+            self._signe_de_vie.start(verrou.rafraichissement_ms())
+            return
+        self.lecture_seule = True
+        self.setWindowTitle(f"NOX_Manager — {self._nom_affiche()} — lecture seule")
+        for bouton in self._boutons_modification:
+            bouton.setEnabled(False)
+            bouton.setToolTip("Projet ouvert en lecture seule")
+        self.detail_panel.lecture_seule = True
+        self.message_lecture_seule = verrou.message_lecture_seule(autre)
+        QtCore.QTimer.singleShot(
+            0,
+            lambda: QtWidgets.QMessageBox.information(
+                self, "Lecture seule", self.message_lecture_seule
+            ),
+        )
+
+    def closeEvent(self, event):
+        if not self.lecture_seule:
+            verrou.rendre(self.projet.dossier)
+        super().closeEvent(event)
 
     def _nom_affiche(self) -> str:
         return self.projet.numero_dossier or self.projet.nom or self.projet.dossier.name
@@ -275,6 +305,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
                 QPushButton:pressed {{ background:#374151; }}
             """)
             bouton.clicked.connect(lambda _=False, a=action: a())
+            if action in (self._parametrer,) or libelle.endswith("Importer"):
+                self._boutons_modification.append(bouton)
             h.addWidget(bouton)
         h.addStretch(1)
         self._badge_projet = QtWidgets.QLabel(self._nom_affiche())
@@ -404,6 +436,7 @@ class FenetreSuivi(QtWidgets.QMainWindow):
             "Définir l'applicabilité (Applicable / N/A) des exigences, sans importer de document."
         )
         applicabilite.clicked.connect(lambda: self._ouvrir_depot("applicability"))
+        self._boutons_modification.append(applicabilite)
         h.addWidget(applicabilite)
 
         importer = QtWidgets.QPushButton("＋  Importer un document")
@@ -421,6 +454,7 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         """)
         importer.setToolTip("Importer un document et cocher les exigences qu'il couvre.")
         importer.clicked.connect(lambda: self._ouvrir_depot("import"))
+        self._boutons_modification.append(importer)
         h.addWidget(importer)
         return barre
 
@@ -543,6 +577,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         return self.onglets_par_nom.get(self.tabs.tabText(self.tabs.currentIndex()))
 
     def _ouvrir_depot(self, mode: str = "import"):
+        if self.lecture_seule:
+            return
         onglet = self._onglet_courant()
         if not onglet:
             return
@@ -580,6 +616,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
             QtWidgets.QApplication.restoreOverrideCursor()
 
     def _parametrer(self):
+        if self.lecture_seule:
+            return
         from app.ui.dialogue_projet import DialogueProjet
 
         frais = projets.lire_projet(self.projet.dossier)
@@ -622,6 +660,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(self, "Suppression du fichier", erreur)
 
     def _retirer_justificatif(self, ligne: LigneSuivi, code: str):
+        if self.lecture_seule:
+            return
         f, r, dossier = ligne.fournisseur, ligne.reference, self.projet.dossier
         docs = corrections.documents_justifiant(dossier, f, r, ligne.livrable, code)
         if not docs:
@@ -636,6 +676,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
 
     def _remplacer_justificatif(self, ligne: LigneSuivi, codes: list[str]):
         """Remplace le justificatif des seules exigences sélectionnées (E6)."""
+        if self.lecture_seule:
+            return
         from app.ui.dialogue_depot import DialogueDepot
 
         alerte = corrections.message_remplacement(codes)
@@ -657,6 +699,8 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         self._recharger_et_reselectionner(ligne)
 
     def _vider_reference(self, ligne: LigneSuivi):
+        if self.lecture_seule:
+            return
         plan = corrections.preparer_vidage(
             self.projet.dossier,
             self.projet.numero_dossier,
