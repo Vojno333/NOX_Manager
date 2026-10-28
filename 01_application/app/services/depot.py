@@ -11,11 +11,13 @@ from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
 
+from app.core.config import lignes_multiples
 from app.dataaccess import arborescence, base_projet, projet_fichier
 from app.models.depot import APPLICABILITE, IMPORT, SaisieDepot
 from app.models.enregistrement import Enregistrement
 from app.models.referentiel import EXTENSIONS_DEPOT, FORMATS_DEPOT
 from app.services import applicabilite as ap
+from app.services import lignes
 
 CHAMPS_CECC_OBLIGATOIRES = ("manufacturer_doc", "manufacturer_part_number", "nom_cecc")
 
@@ -86,14 +88,17 @@ def champs_cecc_finals(saisie: SaisieDepot) -> dict[str, str]:
     return dict(saisie.champs_cecc)
 
 
-def fiche_cecc_initiale(dossier: Path, fournisseur: str, reference: str) -> dict:
-    """Pré-remplissage de la fiche CECC : la dernière fiche de l'article (R12) ;
-    à défaut, le fournisseur et le MNP de l'article (E4)."""
-    fiche = base_projet.derniere_fiche_cecc(dossier, fournisseur, reference)
-    if fiche:
-        return fiche
+def fiche_cecc_initiale(
+    dossier: Path, fournisseur: str, reference: str, id_ligne: str = ""
+) -> dict:
+    """Pré-remplissage de la fiche CECC : la dernière fiche de l'article (de sa
+    ligne, E1) (R12) ; à défaut, le fournisseur et le MNP de la ligne (E4)."""
+    enrs = lignes.enregistrements_de_la_ligne(dossier, fournisseur, reference, id_ligne)
+    cecc = [e for e in enrs if str(e.livrable_source).upper() == "CECC" and e.champs_cecc]
+    if cecc:
+        return max(cecc, key=lambda e: e.depose_le or "").champs_cecc
     projet = projet_fichier.lire_projet(dossier)
-    article = projet.article(fournisseur, reference) if projet else None
+    article = lignes.ligne_cible(projet, fournisseur, reference, id_ligne) if projet else None
     return {
         "manufacturer_doc": fournisseur,
         "manufacturer_part_number": article.mnp if article else "",
@@ -101,16 +106,19 @@ def fiche_cecc_initiale(dossier: Path, fournisseur: str, reference: str) -> dict
 
 
 def etats_existants(
-    dossier: Path, fournisseur: str, reference: str, livrable: str, codes: list[str]
+    dossier: Path,
+    fournisseur: str,
+    reference: str,
+    livrable: str,
+    codes: list[str],
+    id_ligne: str = "",
 ) -> dict[str, int] | None:
     """État déjà enregistré de chaque exigence, ou None si rien n'est enregistré
     pour l'article dans ce livrable."""
     enrs = [
         e
-        for e in base_projet.lire_tous(dossier)
-        if str(e.fournisseur) == str(fournisseur)
-        and str(e.reference) == str(reference)
-        and (
+        for e in lignes.enregistrements_de_la_ligne(dossier, fournisseur, reference, id_ligne)
+        if (
             str(e.livrable_source).upper() == livrable
             or livrable in [str(b).upper() for b in e.livrables_rangement]
         )
@@ -201,8 +209,11 @@ def enregistrer(saisie: SaisieDepot) -> int:
     na = codes_na(saisie)
     applicables = codes_applicables(saisie)
 
-    def _enregistrement(f, r, nom_original="", nom_stocke="", chemin="") -> Enregistrement:
+    def _enregistrement(
+        f, r, id_ligne, nom_original="", nom_stocke="", chemin=""
+    ) -> Enregistrement:
         return Enregistrement(
+            id_ligne=id_ligne,
             fournisseur=f,
             reference=r,
             livrable_source=saisie.livrable,
@@ -219,20 +230,28 @@ def enregistrer(saisie: SaisieDepot) -> int:
             codes_applicables=list(applicables),
         )
 
-    for f, r in saisie.cibles:
-        f, r = str(f), str(r)
+    for cible in saisie.cibles:
+        f, r = str(cible[0]), str(cible[1])
+        # E1 : la ligne visée, son identifiant et son sous-dossier.
+        id_ligne, sous = "", ""
+        if lignes_multiples():
+            article = lignes.ligne_cible(projet, f, r, cible[2] if len(cible) > 2 else "")
+            if article:
+                id_ligne = lignes.id_a_enregistrer(projet, article)
+                sous = lignes.sous_dossier(projet, article)
         if seule:
-            base_projet.ajouter(saisie.dossier, _enregistrement(f, r))
+            base_projet.ajouter(saisie.dossier, _enregistrement(f, r, id_ligne))
             continue
         nom = nom_final(saisie, f, r)
         for livrable in livrables_concernes(saisie, suivis):
             dossier = arborescence.dossier_documents(
-                saisie.dossier, livrable, projet.numero_dossier, f, r
+                saisie.dossier, livrable, projet.numero_dossier, f, r, sous
             )
             copie = arborescence.copier_document(saisie.fichier, dossier, nom)
             chemin = arborescence.chemin_relatif(saisie.dossier, copie)
             base_projet.ajouter(
-                saisie.dossier, _enregistrement(f, r, saisie.fichier.name, copie.name, chemin)
+                saisie.dossier,
+                _enregistrement(f, r, id_ligne, saisie.fichier.name, copie.name, chemin),
             )
     return len(saisie.cibles)
 

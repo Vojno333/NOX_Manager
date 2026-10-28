@@ -291,7 +291,8 @@ class DialogueDepot(QtWidgets.QDialog):
         super().__init__(parent)
         self.projet = projet
         self.project_dir = projet.dossier
-        self.supplier, self.reference = cibles[0]
+        self.supplier, self.reference = cibles[0][0], cibles[0][1]
+        self.id_ligne = cibles[0][2] if len(cibles[0]) > 2 else ""  # E1
         self.preset_justification_type = livrable
         self.mode = mode if mode in ("import", "applicability") else "import"
         self.selected_file: Path | None = None
@@ -646,7 +647,9 @@ class DialogueDepot(QtWidgets.QDialog):
     def _prefill_existing_cecc_fields(self):
         """Dernière fiche de l'article (R12), sinon fournisseur et MNP (E4)."""
         try:
-            fiche = depot.fiche_cecc_initiale(self.project_dir, self.supplier, self.reference)
+            fiche = depot.fiche_cecc_initiale(
+                self.project_dir, self.supplier, self.reference, self.id_ligne
+            )
         except Exception:  # base illisible : fiche laissée vide, comme l'ancienne application
             return
         if fiche:
@@ -659,7 +662,7 @@ class DialogueDepot(QtWidgets.QDialog):
             codes = [row.code for row in page._req_rows]
             try:
                 etats = depot.etats_existants(
-                    self.project_dir, self.supplier, self.reference, livrable, codes
+                    self.project_dir, self.supplier, self.reference, livrable, codes, self.id_ligne
                 )
             except Exception:  # base illisible : exigences laissées « Non défini »
                 return

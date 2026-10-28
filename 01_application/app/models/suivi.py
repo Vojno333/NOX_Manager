@@ -17,6 +17,7 @@ class LigneSuivi:
     livrable: str
     completion: float  # de 0 à 1
     enregistrements: list[Enregistrement] = field(default_factory=list)
+    id_ligne: str = ""  # E1 : ligne de l'article (lignes multiples activées)
 
     @property
     def completion_texte(self) -> str:

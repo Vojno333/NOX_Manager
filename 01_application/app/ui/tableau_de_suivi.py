@@ -644,7 +644,7 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         fenetre = DialogueDepot(
             projet=self.projet,
             livrable=selection[0].livrable,
-            cibles=[(ligne.fournisseur, ligne.reference) for ligne in selection],
+            cibles=[(lg.fournisseur, lg.reference, lg.id_ligne) for lg in selection],
             mode=mode,
             parent=self,
         )
@@ -706,7 +706,9 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         if self.lecture_seule:
             return
         f, r, dossier = ligne.fournisseur, ligne.reference, self.projet.dossier
-        docs = corrections.documents_justifiant(dossier, f, r, ligne.livrable, code)
+        docs = corrections.documents_justifiant(
+            dossier, f, r, ligne.livrable, code, id_ligne=ligne.id_ligne
+        )
         if not docs:
             return
         if not self._oui(
@@ -729,14 +731,19 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         fenetre = DialogueDepot(
             projet=self.projet,
             livrable=ligne.livrable,
-            cibles=[(ligne.fournisseur, ligne.reference)],
+            cibles=[(ligne.fournisseur, ligne.reference, ligne.id_ligne)],
             codes_coches=codes,
             parent=self,
         )
         if fenetre.exec() != QtWidgets.QDialog.Accepted:
             return
         _, erreurs = corrections.remplacer_apres_depot(
-            self.projet.dossier, ligne.fournisseur, ligne.reference, fenetre.debut, codes
+            self.projet.dossier,
+            ligne.fournisseur,
+            ligne.reference,
+            fenetre.debut,
+            codes,
+            ligne.id_ligne,
         )
         self._signaler(erreurs)
         self._recharger_et_reselectionner(ligne)
@@ -750,6 +757,7 @@ class FenetreSuivi(QtWidgets.QMainWindow):
             ligne.fournisseur,
             ligne.reference,
             ligne.livrable,
+            ligne.id_ligne,
         )
         if plan.vide:
             QtWidgets.QMessageBox.information(self, "Supprimer la référence", plan.message_rien())
@@ -766,12 +774,12 @@ class FenetreSuivi(QtWidgets.QMainWindow):
     def _recharger_et_reselectionner(self, ligne: LigneSuivi):
         """Recharge le tableau puis réaffiche le détail de la même ligne."""
         self.recharger()
-        cle = (ligne.fournisseur, ligne.reference, ligne.livrable)
+        cle = (ligne.fournisseur, ligne.reference, ligne.livrable, ligne.id_ligne)
         fraiche = next(
             (
                 lg
                 for lg in self._toutes_les_lignes
-                if (lg.fournisseur, lg.reference, lg.livrable) == cle
+                if (lg.fournisseur, lg.reference, lg.livrable, lg.id_ligne) == cle
             ),
             None,
         )

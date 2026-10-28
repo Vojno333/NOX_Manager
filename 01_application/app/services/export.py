@@ -14,12 +14,14 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
+from app.core.config import lignes_multiples
 from app.dataaccess import arborescence, base_projet, export_excel, projet_fichier
 from app.models.enregistrement import Enregistrement
 from app.models.export import Cellule, ContenuExport
 from app.models.projet import Projet
 from app.models.referentiel import CHAMPS_CECC, COLONNES_CE, COLONNES_DPE, LIVRABLES
 from app.services import applicabilite as ap
+from app.services import lignes as regles_lignes
 
 _COLONNES = {"CE": COLONNES_CE, "DPE": COLONNES_DPE}
 
@@ -88,11 +90,35 @@ def _cellule_document(dossier: Path, chemin_relatif: str, texte: str) -> Cellule
     return Cellule(texte, chemin if arborescence.existe(chemin) else None)
 
 
-def _lignes_ce_dpe(projet, livrable, couples, groupes, infos) -> list:
+def _entrees(projet: Projet, enrs: list[Enregistrement]) -> list[tuple]:
+    """(fournisseur, référence, infos de la ligne, regroupement des enregistrements).
+
+    Sans lignes multiples : un article par couple, infos de la dernière ligne
+    brute (C6). Avec (E1) : une entrée par ligne du projet, avec ses propres
+    infos et enregistrements.
+    """
+    if lignes_multiples() and projet.articles:
+        articles = sorted(
+            projet.articles, key=lambda a: (a.fournisseur.lower(), a.reference.lower())
+        )
+        return [
+            (
+                a.fournisseur,
+                a.reference,
+                a.vers_dict(),
+                _regrouper([e for e in enrs if regles_lignes.appartient(e, projet, a)]),
+            )
+            for a in articles
+        ]
+    groupes = _regrouper(enrs)
+    infos = _infos_lignes(projet)
+    return [(f, r, infos.get((f, r), {}), groupes) for f, r in couples_a_exporter(projet)]
+
+
+def _lignes_ce_dpe(projet, livrable, entrees) -> list:
     colonnes = _COLONNES[livrable]
     lignes = []
-    for f, r in couples:
-        info = infos.get((f, r), {})
+    for f, r, info, groupes in entrees:
         cellules = []
         fiche = _plus_recent(groupes.get((f, r, "CECC"), []))
         mpn = (fiche.champs_cecc.get("manufacturer_part_number", "") if fiche else "") or info.get(
@@ -119,10 +145,9 @@ def _lignes_ce_dpe(projet, livrable, couples, groupes, infos) -> list:
     return lignes
 
 
-def _lignes_cecc(projet, couples, groupes, infos) -> list:
+def _lignes_cecc(projet, entrees) -> list:
     lignes = []
-    for f, r in couples:
-        info = infos.get((f, r), {})
+    for f, r, info, groupes in entrees:
         fiche = _plus_recent(groupes.get((f, r, "CECC"), []))
         cellules = [
             ("B", Cellule(r)),
@@ -156,18 +181,16 @@ def contenus(projet: Projet, enrs: list[Enregistrement] | None = None) -> list[C
     """Contenu de chaque export des livrables suivis, dans l'ordre CE, CECC, DPE."""
     if enrs is None:
         enrs = base_projet.lire_tous(projet.dossier)
-    groupes = _regrouper(enrs)
-    infos = _infos_lignes(projet)
-    couples = couples_a_exporter(projet)
+    entrees = _entrees(projet, enrs)
     numero = projet.numero_dossier
     resultat = []
     for livrable in LIVRABLES:
         if livrable not in projet.livrables:
             continue
         if livrable == "CECC":
-            lignes = _lignes_cecc(projet, couples, groupes, infos)
+            lignes = _lignes_cecc(projet, entrees)
         else:
-            lignes = _lignes_ce_dpe(projet, livrable, couples, groupes, infos)
+            lignes = _lignes_ce_dpe(projet, livrable, entrees)
         resultat.append(
             ContenuExport(
                 livrable=livrable,
