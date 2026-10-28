@@ -82,11 +82,8 @@ def applicabilite_seule(saisie: SaisieDepot) -> bool:
 
 # ── Fiche CECC (R12) ──
 def champs_cecc_finals(saisie: SaisieDepot) -> dict[str, str]:
-    """Champs saisis ; un nom CECC vide prend le nom du fichier (constat C7)."""
-    champs = dict(saisie.champs_cecc)
-    if saisie.fichier:
-        champs["nom_cecc"] = champs.get("nom_cecc") or saisie.fichier.name
-    return champs
+    """Champs saisis, tels quels : le nom CECC n'est plus repris du fichier (E10)."""
+    return dict(saisie.champs_cecc)
 
 
 def fiche_cecc_initiale(dossier: Path, fournisseur: str, reference: str) -> dict:

@@ -267,11 +267,6 @@ class CECCPage(QtWidgets.QWidget):
             else:
                 w.setText(val)
 
-    def set_nom_cecc(self, filename: str):
-        w = self._edits.get("nom_cecc")
-        if isinstance(w, QtWidgets.QLineEdit):
-            w.setText(filename)
-
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Main dialog
@@ -623,8 +618,6 @@ class DialogueDepot(QtWidgets.QDialog):
             if "Glissez" in child.text():
                 child.setText(path.name)
                 child.setStyleSheet("font-size:12px; color:#2563eb; background:transparent;")
-        # Autofill CECC nom
-        self._cecc_page.set_nom_cecc(path.name)
         self._update_preview()
 
     def _current_type(self) -> str:
