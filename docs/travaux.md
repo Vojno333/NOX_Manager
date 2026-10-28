@@ -51,7 +51,7 @@ Tests : 8 — N/A puis Applicable → Applicable ; « 1907/2006 \| REACh » = «
 | 12 | **Dépôt d'un justificatif.** `services/depot.py` : contrôles, nommage automatique, livrables de rangement (RoHS), un enregistrement par dossier, applicabilité seule, pré-remplissage CECC, nom CECC repris du fichier (C7). | 5, 7, 8 | R7–R14 | ☑ |
 | 13 | **Corrections.** `services/corrections.py` : retirer le justificatif d'une exigence, remplacer, vider un article pour un livrable (copie RoHS réduite à RoHS). | 5, 7, 8 | R14, R21, R22, R23 | ☑ |
 | 14 | **Écran d'accueil.** `ui/accueil.py` et `main.py` : projets récents, recherche, ouvrir, créer, supprimer, statistiques disque calculées hors du fil de l'interface. | 2, 6, 9 | R28, R29 | ☑ |
-| 15 | **Dialogue de projet.** `ui/dialogue_projet.py` : saisie manuelle, onglet d'import en masse, modèle CSV, mode modification. | 2, 9 | R1–R6 | ☐ |
+| 15 | **Dialogue de projet.** `ui/dialogue_projet.py` : saisie manuelle, onglet d'import en masse, modèle CSV, mode modification. | 2, 9 | R1–R6 | ☑ |
 
 Sources : 10 ← `project_dashboard_window.py` (`_build_table_rows`, `_compute_ce_dpe_completion`, `_compute_cecc_completion`, `_update_kpis`, `_scan_supplier_reference_pairs`). 11 ← `export_templates.py`. 12 ← `upload_document_dialog.py` (`_validate`, `_save_document`, `_storage_types`, `_auto_name`, `_build_final_filename`, `_cecc_fields_data`, `_prefill_existing_cecc_fields`). 13 ← `project_dashboard_window.py` (`_on_delete_row`, `_keep_only_rohs`, `_remove_justif_for_codes`, `_detach_and_delete_file`, `_on_delete_justif`, `_on_replace_justif`). 14 ← `home_window.py`, `qt_main.py`. 15 ← `new_project_dialog.py` (**pas** `new_project_dialog2.py`).
 Tests : 10 — `attendu/tableau_de_suivi.json` identique. 11 — `attendu/exports.json` identique, S22, S23. 12 — S9 à S15. 13 — S17 à S21. 14 et 15 — S1, S6, S24 à S26 à l'écran.
@@ -105,7 +105,7 @@ Sources : 21 ← `00_ancien/NOX_Manager.spec`, `qt_main.py`, `Documentation/02 -
 | 13 | 34 | **E4** Premier remplissage de la fiche CECC | 30 | `services/depot.py` | ☑ |
 | 14 | 35 | **E13** Liens relatifs dans les exports | 33 | `dataaccess/export_excel.py`, `services/export.py` | ☑ |
 | 14 | 36 | **E10** Nom CECC vraiment obligatoire | 34 | `services/depot.py`, `ui/dialogue_depot.py` | ☑ |
-| 15 | 37 | **E1 (1/2)** Lignes multiples d'un même article : identifiant de ligne, rangement en sous-dossiers, enregistrements rattachés à la ligne | 23, décision à écrire | `models/`, `dataaccess/`, `services/projets.py` | ☐ |
+| 15 | 37 | **E1 (1/2)** Lignes multiples d'un même article : identifiant de ligne, rangement en sous-dossiers, enregistrements rattachés à la ligne | 23, décision à écrire | `models/`, `dataaccess/`, `services/projets.py` | ☑ |
 | 16 | 38 | **E1 (2/2)** Lignes multiples : tableau de suivi, dépôt, corrections, export | 37 | `services/`, `ui/` | ☐ |
 
 ## Couverture des règles
