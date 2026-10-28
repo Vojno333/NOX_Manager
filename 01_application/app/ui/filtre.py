@@ -1,6 +1,6 @@
 """Fenêtre de filtre d'une colonne du tableau de suivi (cases à cocher, recherche).
 
-Reprise de `00_ancien/wikidocs_qt/filter_popup.py`.
+Reprise de `v1-avant-refonte:wikidocs_qt/filter_popup.py`.
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 """Enregistrement : un événement daté de la table `uploaded_documents`.
 
 Un dépôt de document, ou un réglage d'applicabilité seul (sans fichier).
-Repris de `00_ancien/wikidocs_qt/metadata_db.py`.
+Repris de `v1-avant-refonte:wikidocs_qt/metadata_db.py`.
 """
 
 from __future__ import annotations

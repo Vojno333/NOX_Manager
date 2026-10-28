@@ -1,6 +1,6 @@
 """Dimensionnement et centrage commun à toutes les fenêtres et dialogues.
 
-Repris de `00_ancien/wikidocs_qt/window_geometry.py` (`fit_and_center`).
+Repris de `v1-avant-refonte:wikidocs_qt/window_geometry.py` (`fit_and_center`).
 """
 
 from __future__ import annotations

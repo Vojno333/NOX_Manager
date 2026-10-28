@@ -2,7 +2,7 @@
 
 Projets récents, emplacements récents, emplacement par défaut. Un fichier
 absent ou illisible donne les valeurs par défaut, sans message.
-Repris de `00_ancien/wikidocs_qt/project_manager.py` (partie état).
+Repris de `v1-avant-refonte:wikidocs_qt/project_manager.py` (partie état).
 """
 
 from __future__ import annotations

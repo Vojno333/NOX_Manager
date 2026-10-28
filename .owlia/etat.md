@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (prochaine tâche : 23)
+- Étape en cours : R8 — Réaliser (prochaine tâche : 24)
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
@@ -26,9 +26,9 @@
   - assemblage et fabrication (21) : `main.py` relie les écrans, `NOX_Manager.spec` versionné, `uv run build` → `dist/NOX_Manager/` (≈ 120 Mo, démarre), `docs/livraison.md`.
   - 111 tests, lint et couches au vert.
 - Tâche 22 (recette) faite le 2026-10-28 avec l'utilisateur, version allégée (`docs/recette.md`) : tout conforme, vrai projet compris (`tests/reference/comparer_projet.py`, joué par l'utilisateur, projet confidentiel). Un écart, M3 / S21, fidèle à l'ancienne application, refusé par l'utilisateur → E7 (gardée à sa place, après la tâche 23).
+- Tâche 23 faite le 2026-10-28 (accord de l'utilisateur) : `00_ancien/` supprimé, ancien code conservé sous l'étiquette `v1-avant-refonte` ; `AGENTS.md`, `README.md` et les docstrings y renvoient. **Reconstruction terminée.**
 
 ## Reste à faire
-- Tâche 23 — supprimer `00_ancien/` (seulement si la recette est sans écart).
 - Tâches 24 à 38 — évolutions (après la tâche 23).
 
 ## Écarts et constats relevés pendant la reconstruction (à valider en recette)

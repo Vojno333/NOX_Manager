@@ -1,4 +1,8 @@
-"""Construit le projet d'essai et enregistre les résultats de référence.
+"""
+**Outil de la reprise, gelé** : il exécute l'ancienne application, qui n'est plus
+dans le dossier. Pour le rejouer : `git worktree add ../nox-ancien v1-avant-refonte`,
+puis passer ce dossier comme racine de l'ancien code.
+Construit le projet d'essai et enregistre les résultats de référence.
 
 Étape R4 de la reprise : on fait produire par l'application ACTUELLE les
 résultats observables (pourcentages du tableau de suivi, contenu des exports

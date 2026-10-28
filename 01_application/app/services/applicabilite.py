@@ -1,6 +1,6 @@
 """Règles d'applicabilité, communes au tableau de suivi, au dépôt et à l'export.
 
-Repris de `00_ancien/wikidocs_qt/document_rules.py` et
+Repris de `v1-avant-refonte:wikidocs_qt/document_rules.py` et
 `project_dashboard_window.py` (`_doc_applies_to_type`, `_compute_requirement_score`).
 """
 

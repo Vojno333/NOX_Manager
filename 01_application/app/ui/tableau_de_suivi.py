@@ -1,7 +1,7 @@
 """Tableau de suivi d'un projet : onglets Tous / par livrable, indicateurs,
 filtres par colonne, import, applicabilité, paramétrage et export.
 
-Interface reprise de `00_ancien/wikidocs_qt/project_dashboard_window.py`
+Interface reprise de `v1-avant-refonte:wikidocs_qt/project_dashboard_window.py`
 (`MainTab`, `ProjectDashboardWindow`) ; les calculs passent par
 `services/completion.py` et l'export par `services/export.py`.
 """

@@ -1,7 +1,11 @@
-"""Compare l'ancienne et la nouvelle application sur un vrai projet (recette, tâche 22).
+"""
+**Outil de la reprise, gelé** : il exécute l'ancienne application, qui n'est plus
+dans le dossier. Pour le rejouer : `git worktree add ../nox-ancien v1-avant-refonte`,
+puis passer ce dossier comme racine de l'ancien code.
+Compare l'ancienne et la nouvelle application sur un vrai projet (recette, tâche 22).
 
 Usage (depuis la racine du dépôt) :
-    uv run python tests/reference/comparer_projet.py "<dossier du projet>"
+    uv run python tests/reference/comparer_projet.py "<projet>" "<racine de l'ancien code>"
 
 Confidentialité : le script n'affiche AUCUN contenu du projet (ni article, ni
 nom de fichier, ni valeur) : seulement des nombres et un verdict.
@@ -23,7 +27,8 @@ from pathlib import Path
 
 DEPOT = Path(__file__).resolve().parents[2]
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
-sys.path.insert(0, str(DEPOT / "00_ancien"))
+# Racine de l'ancien code : 2e argument (worktree de `v1-avant-refonte`).
+sys.path.insert(0, str(Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else DEPOT / "00_ancien"))
 sys.path.insert(0, str(DEPOT / "01_application"))
 
 

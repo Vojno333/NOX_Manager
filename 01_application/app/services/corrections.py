@@ -1,7 +1,7 @@
 """Corrections : retirer ou remplacer le justificatif d'une exigence, vider un
 article pour un livrable (R21, R22, R23).
 
-Repris de `00_ancien/wikidocs_qt/project_dashboard_window.py` (`_on_delete_row`,
+Repris de `v1-avant-refonte:wikidocs_qt/project_dashboard_window.py` (`_on_delete_row`,
 `_keep_only_rohs`, `_justif_docs_for_code`, `_remove_justif_for_codes`,
 `_detach_and_delete_file`, `_on_delete_justif`, `_on_replace_justif`).
 """

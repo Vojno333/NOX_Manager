@@ -1,6 +1,6 @@
 """Dialogue de dépôt d'un justificatif, ou de réglage de l'applicabilité seule (R7 à R13).
 
-Interface reprise de `00_ancien/wikidocs_qt/upload_document_dialog.py`
+Interface reprise de `v1-avant-refonte:wikidocs_qt/upload_document_dialog.py`
 (`CECCPage`, `UploadDocumentDialog`, `CECC_FIELD_HELP`) ; contrôles et
 enregistrement par `services/depot.py`.
 """

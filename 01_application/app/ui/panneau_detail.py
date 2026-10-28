@@ -2,7 +2,7 @@
 document, clic droit Ouvrir / Remplacer / Supprimer, boutons Modifier et
 Supprimer la référence.
 
-Repris de `00_ancien/wikidocs_qt/project_dashboard_window.py` (`DetailPanel`).
+Repris de `v1-avant-refonte:wikidocs_qt/project_dashboard_window.py` (`DetailPanel`).
 """
 
 from __future__ import annotations
