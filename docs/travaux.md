@@ -71,7 +71,7 @@ Tests : 18 — un filtre change les indicateurs (R20).
 
 | # | Tâche | Dépend de | Règles | Fait |
 |---|---|---|---|---|
-| 19 | **Dialogue de dépôt.** `ui/dialogue_depot.py` : page CECC (menus, aides), assemblage des pages, modes import / applicabilité, lot de cibles, messages de refus. | 12, 17 | R7–R13 | ☐ |
+| 19 | **Dialogue de dépôt.** `ui/dialogue_depot.py` : page CECC (menus, aides), assemblage des pages, modes import / applicabilité, lot de cibles, messages de refus. | 12, 17 | R7–R13 | ☑ |
 | 20 | **Panneau de détail.** `ui/panneau_detail.py` : exigences et documents d'un article, ouverture d'un document, clic droit Ouvrir / Remplacer / Supprimer, boutons Modifier et Supprimer la référence. | 13, 18 | R21, R22, R23 | ☐ |
 
 Sources : 19 ← `upload_document_dialog.py` (`CECCPage`, `UploadDocumentDialog`, `CECC_FIELD_HELP`). 20 ← `project_dashboard_window.py` (`DetailPanel`, `_on_doc_context_menu`, `_open_file`).
