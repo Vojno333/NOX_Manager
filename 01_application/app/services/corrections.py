@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath
 
 from app.dataaccess import arborescence, base_projet
 from app.models.enregistrement import Enregistrement
+from app.models.referentiel import CODE_ROHS
 from app.services import applicabilite as ap
 
 
@@ -137,7 +138,7 @@ def remplacer_apres_depot(
     return retirer_exigences(dossier, anciens, codes)
 
 
-# ── Vider un article pour un livrable (R23) ──
+# ── Vider un article pour un livrable (R23, E7) ──
 @dataclass
 class Vidage:
     fournisseur: str
@@ -147,10 +148,13 @@ class Vidage:
     a_supprimer: list[Enregistrement] = field(default_factory=list)
     a_reduire: list[Enregistrement] = field(default_factory=list)  # copies RoHS d'un autre livrable
     fichiers: set[Path] = field(default_factory=set)
+    # E7 : justificatifs RoHS de l'article rangés dans l'autre livrable (CE ↔ DPE).
+    dossier_autre: str = ""
+    rohs_autre: list[Enregistrement] = field(default_factory=list)
 
     @property
     def vide(self) -> bool:
-        return not self.a_supprimer and not self.fichiers
+        return not self.a_supprimer and not self.fichiers and not self.rohs_autre
 
     def message_rien(self) -> str:
         return (
@@ -172,10 +176,13 @@ class Vidage:
             + (f" :\n{liste}" if liste else "")
             + "\n\nLes autres BDD ne sont pas touchées. Cette action est irréversible."
         )
-        if t in ("CE", "DPE"):
+        if self.rohs_autre:
+            noms = sorted({e.nom_stocke for e in self.rohs_autre})
             message += (
-                "\n\nRoHS est commun au CE et au DPE : un justificatif RoHS "
-                "rangé dans l'autre BDD restera visible ici."
+                "\n\nRoHS est commun au CE et au DPE : son justificatif rangé dans "
+                f"« {self.dossier_autre} » est aussi retiré :\n"
+                + "\n".join(f"• {n}" for n in noms)
+                + "\nL'applicabilité de l'autre BDD est conservée."
             )
         return message
 
@@ -206,7 +213,22 @@ def preparer_vidage(
     )
     fichiers |= set(arborescence.fichiers_du_dossier(dossier_article))
     plan.fichiers = {f for f in fichiers if arborescence.existe(f)}
+    autre = {"CE": "DPE", "DPE": "CE"}.get(livrable)
+    if autre:
+        plan.dossier_autre = f"BDD {autre} {numero_dossier}"
+        plan.rohs_autre = _rohs_dans(dossier, fournisseur, reference, plan.dossier_autre)
     return plan
+
+
+def _rohs_dans(dossier: Path, fournisseur: str, reference: str, nom_dossier: str):
+    """Enregistrements de l'article dont le fichier, rangé dans `nom_dossier`, couvre RoHS."""
+    return [
+        e
+        for e in _de_l_article(dossier, fournisseur, reference)
+        if e.a_un_fichier
+        and PurePosixPath(e.chemin_relatif).parts[0] == nom_dossier
+        and any(ap.est_rohs(c) for c in e.codes_couverts)
+    ]
 
 
 def _garder_rohs(dossier: Path, enr: Enregistrement) -> list[str]:
@@ -241,6 +263,10 @@ def vider(dossier: Path, plan: Vidage) -> list[str]:
     echecs = []
     for e in plan.a_reduire:
         echecs += _garder_rohs(dossier, e)
+    if plan.dossier_autre:
+        rohs = _rohs_dans(dossier, plan.fournisseur, plan.reference, plan.dossier_autre)
+        _, erreurs = retirer_exigences(dossier, rohs, [CODE_ROHS])
+        echecs += erreurs
     utilises = {
         (dossier / e.chemin_relatif).resolve()
         for e in base_projet.lire_tous(dossier)

@@ -72,12 +72,14 @@ def test_s17_r21_retirer_depuis_le_panneau(app, projet_essai, oui):
     assert _ligne(fenetre, "ACME", "REF-001", "CE").completion_texte == "33 %"
 
 
-def test_s21_r23_vider_depuis_le_panneau(app, projet_essai, oui):
+def test_e7_vider_depuis_le_panneau(app, projet_essai, oui):
     fenetre = FenetreSuivi(projet_fichier.lire_projet(projet_essai))
     fenetre._vider_reference(_ligne(fenetre, "BETA", "REF-010", "CE"))
     assert oui[0][0] == "Supprimer la référence"
     assert not (projet_essai / "BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").exists()
-    assert _ligne(fenetre, "BETA", "REF-010", "DPE").completion_texte == "50 %"
+    assert not (projet_essai / "BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").exists()
+    for t in ("CE", "DPE"):
+        assert _ligne(fenetre, "BETA", "REF-010", t).completion_texte == "0 %"
 
 
 def test_e6_selection_de_plusieurs_exigences(app, projet_essai):
