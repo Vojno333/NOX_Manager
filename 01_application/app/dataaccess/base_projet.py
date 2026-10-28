@@ -1,6 +1,6 @@
 """Base SQLite d'un projet : `.nox/nox_metadata.db`, table `uploaded_documents`.
 
-Repris de `00_ancien/wikidocs_qt/metadata_db.py`. Les colonnes `*_json`
+Repris de `v1-avant-refonte:wikidocs_qt/metadata_db.py`. Les colonnes `*_json`
 contiennent des listes ou dictionnaires JSON (`ensure_ascii=False`).
 """
 

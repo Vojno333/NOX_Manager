@@ -21,9 +21,9 @@ uv run dev
 
 Rien d'autre à installer que `uv`.
 
-## Reprise en cours
+## Reprise
 
-L'ancienne application est gelée dans `00_ancien/`. Elle reste utilisable (`py 00_ancien/qt_main.py`) et sert de référence jusqu'à la fin de la reconstruction.
+La reconstruction à l'identique est terminée et recettée (`docs/recette.md`). L'ancienne application reste dans l'historique Git sous l'étiquette `v1-avant-refonte`. Les évolutions sont listées dans `docs/travaux.md`.
 
 ## Où se trouve quoi
 

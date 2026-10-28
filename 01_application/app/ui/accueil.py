@@ -1,6 +1,6 @@
 """Écran d'accueil : projets récents, recherche, ouvrir, créer, supprimer.
 
-Repris de `00_ancien/wikidocs_qt/home_window.py`. L'ouverture du tableau de
+Repris de `v1-avant-refonte:wikidocs_qt/home_window.py`. L'ouverture du tableau de
 suivi et du dialogue de projet est reliée par `main.py` (signaux).
 """
 

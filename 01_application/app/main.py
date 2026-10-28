@@ -1,6 +1,6 @@
 """Point d'entrée de NOX Manager.
 
-Repris de `00_ancien/qt_main.py`.
+Repris de `v1-avant-refonte:qt_main.py`.
 """
 
 from __future__ import annotations

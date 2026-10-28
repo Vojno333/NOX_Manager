@@ -1,6 +1,6 @@
 """Créer, modifier, ouvrir et supprimer un projet.
 
-Repris de `00_ancien/wikidocs_qt/new_project_dialog.py` (`_validate`,
+Repris de `v1-avant-refonte:wikidocs_qt/new_project_dialog.py` (`_validate`,
 `_split_bulk_column`, `_parse_bulk_lines`, `_import_bulk_rows`,
 `_download_bulk_template`, `_create_project`, `_update_project`) et
 `home_window.py` (`_delete_selected_project`, `_open_project_from_data`).

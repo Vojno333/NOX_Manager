@@ -29,8 +29,6 @@ testpaths = ["01_application/tests"]
 [tool.ruff]
 line-length = 100
 src = ["01_application"]
-# 00_ancien n'existe que pendant la reprise : il est gelé et ne se corrige pas.
-exclude = ["00_ancien"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "S"]

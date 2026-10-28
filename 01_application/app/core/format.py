@@ -1,6 +1,6 @@
 """Mise en forme de valeurs pour l'affichage.
 
-Repris de `00_ancien/wikidocs_qt/utils.py` (`human_size`) et `home_window.py`
+Repris de `v1-avant-refonte:wikidocs_qt/utils.py` (`human_size`) et `home_window.py`
 (`_format_datetime`).
 """
 

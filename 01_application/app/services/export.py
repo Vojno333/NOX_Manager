@@ -1,6 +1,6 @@
 """Contenu des exports Excel CE, CECC et DPE, et lancement de l'export.
 
-Repris de `00_ancien/wikidocs_qt/export_templates.py` (`_fill_ce_sheet`,
+Repris de `v1-avant-refonte:wikidocs_qt/export_templates.py` (`_fill_ce_sheet`,
 `_fill_dpe_sheet`, `_fill_cecc_sheet`, `_group_docs`, `_rows_lookup`,
 `_scan_supplier_reference_pairs`, `_latest_doc_by_requirement`,
 `export_project_templates`) et `project_dashboard_window.py` (`_export_templates`).

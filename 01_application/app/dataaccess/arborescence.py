@@ -1,6 +1,6 @@
 """Dossiers et fichiers d'un projet : `BDD <type> <n°>/Documents/<F>/<R>/`.
 
-Repris de `00_ancien/wikidocs_qt/project_structure.py`,
+Repris de `v1-avant-refonte:wikidocs_qt/project_structure.py`,
 `upload_document_dialog.py` (`_safe_name_part`, `_unique_target_path`,
 `_target_folders_for`) et `new_project_dialog.py` (création des dossiers).
 """

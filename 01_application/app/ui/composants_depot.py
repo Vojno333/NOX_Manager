@@ -1,7 +1,7 @@
 """Composants du dialogue de dépôt : bascule à trois états, zone de dépôt,
 pages d'exigences CE et DPE (RoHS synchronisée, compteurs, aperçu du nom).
 
-Repris de `00_ancien/wikidocs_qt/upload_document_dialog.py` (`ThreeStateToggle`,
+Repris de `v1-avant-refonte:wikidocs_qt/upload_document_dialog.py` (`ThreeStateToggle`,
 `RequirementRow`, `DropZone`, `CEPage`, `DPEPage`, `_link_rohs_rows`).
 """
 

@@ -82,7 +82,7 @@ Sources : 19 ← `upload_document_dialog.py` (`CECCPage`, `UploadDocumentDialog`
 |---|---|---|---|---|
 | 21 | **Assemblage et fabrication.** Relier accueil → tableau de suivi → dialogues ; `NOX_Manager.spec` versionné (ressources, icône, écran de démarrage, fermeture du splash) ; `uv run build` ; liste de vérification de la livraison. | 14, 15, 18, 19, 20 | technique (décision 0002) | ☑ |
 | 22 | **Recette.** Jouer S1 à S27 sur l'exécutable fabriqué, sur une copie de `projet_essai` et sur une copie d'un vrai projet du partage. Consigner les écarts. | 16, 21 | R1–R31 | ☑ |
-| 23 | **Supprimer `00_ancien/`.** Possible seulement si la tâche 22 est sans écart et si la référence automatisée passe. | 22 | — | ☐ |
+| 23 | **Supprimer `00_ancien/`.** Possible seulement si la tâche 22 est sans écart et si la référence automatisée passe. | 22 | — | ☑ |
 
 Sources : 21 ← `00_ancien/NOX_Manager.spec`, `qt_main.py`, `Documentation/02 - Développer/Build et livraison.md`.
 

@@ -1,6 +1,6 @@
 """Dialogue de création et de modification d'un projet (R1 à R6).
 
-Interface reprise de `00_ancien/wikidocs_qt/new_project_dialog.py` (et non de
+Interface reprise de `v1-avant-refonte:wikidocs_qt/new_project_dialog.py` (et non de
 `new_project_dialog2.py`) ; les contrôles et l'enregistrement passent par
 `services/projets.py`.
 """

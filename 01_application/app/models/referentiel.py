@@ -1,6 +1,6 @@
 """Référentiels métier : exigences, champs CECC, colonnes des exports Excel.
 
-Repris de `00_ancien/wikidocs_qt/document_rules.py`, `export_templates.py`
+Repris de `v1-avant-refonte:wikidocs_qt/document_rules.py`, `export_templates.py`
 (dictionnaires de colonnes) et `upload_document_dialog.py` (menus CECC).
 Données seules : les règles qui s'en servent vivent dans `services/`.
 """

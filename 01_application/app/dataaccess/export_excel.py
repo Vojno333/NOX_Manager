@@ -1,7 +1,7 @@
 """Écriture des exports Excel dans les modèles `Template_BDD_*_N0X.xlsx`.
 
 Mécanique du classeur seulement : le contenu des cellules est décidé par
-`services/export.py`. Repris de `00_ancien/wikidocs_qt/export_templates.py`.
+`services/export.py`. Repris de `v1-avant-refonte:wikidocs_qt/export_templates.py`.
 """
 
 from __future__ import annotations

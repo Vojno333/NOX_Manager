@@ -1,7 +1,7 @@
 """Éléments visuels du tableau de suivi : palette, polices, carte d'indicateur,
 pastilles, badge de complétion, en-tête de colonne filtrable.
 
-Repris de `00_ancien/wikidocs_qt/project_dashboard_window.py`.
+Repris de `v1-avant-refonte:wikidocs_qt/project_dashboard_window.py`.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """Lecture et écriture de `.nox/project.json` (version 3), repli sur l'ancien `.nox_project.json`.
 
-Repris de `00_ancien/wikidocs_qt/project_manager.py` (`load_project`,
+Repris de `v1-avant-refonte:wikidocs_qt/project_manager.py` (`load_project`,
 `save_project`, `create_project_file`).
 """
 

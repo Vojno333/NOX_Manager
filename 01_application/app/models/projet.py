@@ -1,6 +1,6 @@
 """Projet et articles.
 
-Repris de `00_ancien/wikidocs_qt/project_manager.py` (`_normalize_rows`,
+Repris de `v1-avant-refonte:wikidocs_qt/project_manager.py` (`_normalize_rows`,
 `_normalize_enabled_bdds`).
 """
 

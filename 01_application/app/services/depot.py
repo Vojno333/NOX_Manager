@@ -1,6 +1,6 @@
 """Dépôt d'un justificatif ou réglage de l'applicabilité seule (R7 à R14).
 
-Repris de `00_ancien/wikidocs_qt/upload_document_dialog.py` (`_validate`,
+Repris de `v1-avant-refonte:wikidocs_qt/upload_document_dialog.py` (`_validate`,
 `_save_document`, `_storage_types`, `_has_rohs`, `_selected_requirements`,
 `_auto_name`, `_build_final_filename`, `_cecc_fields_data`,
 `_prefill_existing_cecc_fields`, `_prefill_existing_applicability`).

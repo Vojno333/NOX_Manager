@@ -1,6 +1,6 @@
 """Complétion des articles et indicateurs du tableau de suivi.
 
-Repris de `00_ancien/wikidocs_qt/project_dashboard_window.py`
+Repris de `v1-avant-refonte:wikidocs_qt/project_dashboard_window.py`
 (`_build_table_rows`, `_compute_ce_dpe_completion`, `_compute_requirement_score`,
 `_compute_cecc_completion`, `_scan_supplier_reference_pairs`, `_apply_filters`,
 `_update_kpis`).

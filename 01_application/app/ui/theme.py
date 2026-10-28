@@ -1,7 +1,7 @@
 """Thème de l'application : style Fusion, palette claire, feuille de style unique.
 
-Repris de `00_ancien/wikidocs_qt/theme.py` (feuille de style, mot pour mot)
-et `00_ancien/qt_main.py` (palette, police).
+Repris de `v1-avant-refonte:wikidocs_qt/theme.py` (feuille de style, mot pour mot)
+et `v1-avant-refonte:qt_main.py` (palette, police).
 """
 
 from __future__ import annotations
@@ -235,7 +235,7 @@ def appliquer_theme(app: QtWidgets.QApplication) -> None:
         QtWidgets.QApplication.setFont(QtGui.QFont("Segoe UI", 10))
 
 
-# Feuille de style propre à l'écran d'accueil (`00_ancien/wikidocs_qt/home_window.py`).
+# Feuille de style propre à l'écran d'accueil (`v1-avant-refonte:wikidocs_qt/home_window.py`).
 STYLE_ACCUEIL = """
 /* ── Global ── */
 QMainWindow, QWidget#centralWidget {
@@ -475,7 +475,7 @@ QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none;
 """
 
 
-# Feuille de style reprise de `00_ancien/wikidocs_qt/new_project_dialog.py`.
+# Feuille de style reprise de `v1-avant-refonte:wikidocs_qt/new_project_dialog.py`.
 STYLE_DIALOGUE_PROJET = """
 QDialog {
     background: #f5f6f8;
@@ -728,7 +728,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 """
 
 
-# Feuille de style reprise de `00_ancien/wikidocs_qt/upload_document_dialog.py`.
+# Feuille de style reprise de `v1-avant-refonte:wikidocs_qt/upload_document_dialog.py`.
 STYLE_DEPOT = """
 QDialog {
     background: #f5f6f8;
