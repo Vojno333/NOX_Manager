@@ -343,7 +343,7 @@
         "valeur": "Moteur 24V"
       },
       "D7": {
-        "valeur": "MPN-BETA"
+        "valeur": "MNP-010"
       },
       "E7": {
         "valeur": "BETA"
@@ -388,9 +388,6 @@
       "C9": {
         "valeur": "Capot"
       },
-      "D9": {
-        "valeur": "MPN-EPS"
-      },
       "E9": {
         "valeur": "EPS"
       },
@@ -414,7 +411,7 @@
         "valeur": "Carte E/S"
       },
       "D10": {
-        "valeur": "MPN-GAMMA"
+        "valeur": "MNP-020"
       },
       "E10": {
         "valeur": "GAMMA"
