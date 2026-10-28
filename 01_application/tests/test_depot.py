@@ -142,7 +142,7 @@ def test_s13_r13_nom_automatique_et_collision(projet_essai, tmp_path):
     )
 
 
-def test_s14_r13_nom_saisi_avec_un_point(projet_essai, tmp_path):
+def test_e3_extension_toujours_conservee(projet_essai, tmp_path):
     saisie = _ce(
         projet_essai,
         [("ACME", "REF-001")],
@@ -150,9 +150,13 @@ def test_s14_r13_nom_saisi_avec_un_point(projet_essai, tmp_path):
         ["2006/42/UE"],
         nom_saisi="Rapport v1.2",
     )
-    assert depot.nom_final(saisie, "ACME", "REF-001") == "Rapport v1.2"
+    assert depot.nom_final(saisie, "ACME", "REF-001") == "Rapport v1.2.pdf"
     saisie.nom_saisi = "Rapport"
     assert depot.nom_final(saisie, "ACME", "REF-001") == "Rapport.pdf"
+    saisie.nom_saisi = "Rapport.PDF"
+    assert depot.nom_final(saisie, "ACME", "REF-001") == "Rapport.PDF"
+    saisie.nom_saisi = "Rapport.docx"
+    assert depot.nom_final(saisie, "ACME", "REF-001") == "Rapport.docx.pdf"
     assert depot.nom_automatique("CE", "A B", "R/1") == "CE_A_B_R_1"
 
 

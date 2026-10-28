@@ -125,14 +125,15 @@ def nom_automatique(livrable: str, fournisseur: str, reference: str) -> str:
 
 
 def nom_final(saisie: SaisieDepot, fournisseur: str, reference: str) -> str:
-    """Nom saisi (pris tel quel s'il contient un point), sinon nom automatique,
-    avec l'extension du fichier d'origine."""
+    """Nom saisi, sinon nom automatique ; l'extension du fichier d'origine est
+    toujours gardée (E3), sans être doublée si le nom saisi la porte déjà."""
     if not saisie.fichier:
         return "—"
+    extension = saisie.fichier.suffix
     saisi = saisie.nom_saisi.strip()
     if saisi:
-        return saisi if "." in saisi else saisi + saisie.fichier.suffix
-    return nom_automatique(saisie.livrable, fournisseur, reference) + saisie.fichier.suffix
+        return saisi if saisi.lower().endswith(extension.lower()) else saisi + extension
+    return nom_automatique(saisie.livrable, fournisseur, reference) + extension
 
 
 # ── Contrôles (R7 à R12) ──
