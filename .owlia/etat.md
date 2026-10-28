@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (prochaine tâche : 22)
+- Étape en cours : R8 — Réaliser (prochaine tâche : 23)
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
@@ -25,9 +25,9 @@
   - référence automatisée (16) : tableau, exports et arborescence identiques à `attendu/`, y compris sur une copie du projet écrit par l'ancienne application ;
   - assemblage et fabrication (21) : `main.py` relie les écrans, `NOX_Manager.spec` versionné, `uv run build` → `dist/NOX_Manager/` (≈ 120 Mo, démarre), `docs/livraison.md`.
   - 111 tests, lint et couches au vert.
+- Tâche 22 (recette) faite le 2026-10-28 avec l'utilisateur, version allégée (`docs/recette.md`) : tout conforme, vrai projet compris (`tests/reference/comparer_projet.py`, joué par l'utilisateur, projet confidentiel). Un écart, M3 / S21, fidèle à l'ancienne application, refusé par l'utilisateur → E7 (gardée à sa place, après la tâche 23).
 
 ## Reste à faire
-- Tâche 22 — recette avec l'utilisateur : jouer S1 à S27 sur l'exécutable, sur une copie de `projet_essai` et sur une copie d'un vrai projet du partage ; consigner les écarts.
 - Tâche 23 — supprimer `00_ancien/` (seulement si la recette est sans écart).
 - Tâches 24 à 38 — évolutions (après la tâche 23).
 
