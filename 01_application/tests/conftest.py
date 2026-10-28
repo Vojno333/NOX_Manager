@@ -54,3 +54,24 @@ def ecrire_fichier_projet_essai(racine):
 @pytest.fixture
 def fichier_projet_essai(tmp_path):
     return ecrire_fichier_projet_essai(tmp_path / "projet_essai")
+
+
+def construire_projet_essai(racine):
+    """Projet d'essai complet : fichier projet, base et documents (sauf le fichier disparu)."""
+    from app.dataaccess import base_projet
+    from app.models.enregistrement import Enregistrement
+
+    ecrire_fichier_projet_essai(racine)
+    base_projet.initialiser(racine)
+    for rec in reference._records():
+        base_projet.ajouter(racine, Enregistrement.depuis_dict(rec))
+        if rec["relative_path"] and rec["stored_filename"] not in reference.MISSING_FILES:
+            f = racine / rec["relative_path"]
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(b"%PDF-1.4\n% document d'essai NOX\n")
+    return racine
+
+
+@pytest.fixture
+def projet_essai(tmp_path):
+    return construire_projet_essai(tmp_path / "projet_essai")
