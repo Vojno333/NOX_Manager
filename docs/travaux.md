@@ -61,7 +61,7 @@ Tests : 10 — `attendu/tableau_de_suivi.json` identique. 11 — `attendu/export
 | # | Tâche | Dépend de | Règles | Fait |
 |---|---|---|---|---|
 | 16 | **Référence automatisée.** `tests/test_reference.py` : sur une copie de `projet_essai`, le nouveau code produit exactement `attendu/` (tableau, exports, arborescence). | 10, 11 | R31 | ☑ |
-| 17 | **Composants du dépôt.** `ui/composants_depot.py` : bascule à trois états, zone de glisser-déposer, pages d'exigences CE et DPE (RoHS synchronisé, compteurs, aperçu du nom). | 2, 1 | R10, R14 | ☐ |
+| 17 | **Composants du dépôt.** `ui/composants_depot.py` : bascule à trois états, zone de glisser-déposer, pages d'exigences CE et DPE (RoHS synchronisé, compteurs, aperçu du nom). | 2, 1 | R10, R14 | ☑ |
 | 18 | **Tableau de suivi.** `ui/tableau_de_suivi.py` et `ui/filtre.py` : onglets Tous / par livrable, indicateurs, filtres par colonne et pastilles, bouton d'export et message de fin. | 2, 10, 11 | R20, R24, R27 | ☐ |
 
 Sources : 17 ← `upload_document_dialog.py` (`ThreeStateToggle`, `DropZone`, `CEPage`, `DPEPage`, `_link_rohs_rows`). 18 ← `project_dashboard_window.py` (`MainTab`, `FilterableHeader`, KPI, `_load_table`, `_export_templates`), `filter_popup.py`.
