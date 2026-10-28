@@ -121,17 +121,15 @@ def _lignes_cecc(projet, couples, groupes, infos) -> list:
             ("E", Cellule(f)),
             ("F", Cellule(info.get("order_number", ""))),
         ]
+        # E8 : D = MNP saisi pour l'article, H = MPN de la fiche (vide sans fiche).
         mnp = info.get("mnp", "")
         if mnp:
             cellules.append(("D", Cellule(mnp)))
         if fiche:
             champs = fiche.champs_cecc
-            mpn = champs.get("manufacturer_part_number", "") or mnp
-            if mpn:
-                cellules.append(("D", Cellule(mpn)))
             cellules += [
                 ("G", Cellule(champs.get("manufacturer_doc", ""))),
-                ("H", Cellule(mpn)),
+                ("H", Cellule(champs.get("manufacturer_part_number", ""))),
                 ("I", Cellule(ap.statut_cecc(champs))),
             ]
             nom = champs.get("nom_cecc", "") or fiche.nom_stocke

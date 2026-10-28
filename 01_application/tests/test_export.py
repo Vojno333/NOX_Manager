@@ -66,3 +66,14 @@ def test_s23_r27_export_ouvert_rien_n_est_ecrit(projet_essai):
         kernel32.CloseHandle(ctypes.c_void_p(poignee))
     assert not (ce.parent / "OLD").exists()
     assert not (projet_essai / "BDD CECC N999" / "OLD").exists()
+
+
+def test_e8_colonnes_d_et_h_distinctes_en_cecc(projet_essai):
+    (cecc,) = [c for c, _ in export.exporter(projet_essai) if "CECC" in c.name]
+    cellules = relever(cecc, projet_essai)["cellules"]
+    # GAMMA : D = MNP de l'article, H = MPN de la fiche.
+    assert cellules["D10"]["valeur"] == "MNP-020" and cellules["H10"]["valeur"] == "MPN-GAMMA"
+    # EPS : pas de MNP saisi → D vide, même si la fiche a un MPN.
+    assert "D9" not in cellules and cellules["H9"]["valeur"] == "MPN-EPS"
+    # ACME / REF-001 : pas de fiche → H vide.
+    assert cellules["D5"]["valeur"] == "MNP-001" and "H5" not in cellules
