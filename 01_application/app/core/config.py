@@ -22,6 +22,14 @@ def racine_ressources() -> Path:
     return Path(getattr(sys, "_MEIPASS", RACINE_DEPOT))
 
 
+def ressource(nom: str) -> Path:
+    """Chemin d'une ressource livrée (modèle Excel, icône, image) dans `ressources/`."""
+    chemin = racine_ressources() / "ressources" / nom
+    if not chemin.is_file():
+        raise FileNotFoundError(f"Ressource introuvable : {chemin}")
+    return chemin
+
+
 @lru_cache
 def reglages() -> dict:
     return json.loads((racine_ressources() / "config.json").read_text("utf-8"))

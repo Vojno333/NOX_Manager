@@ -13,7 +13,7 @@
 
 | # | Tâche | Dépend de | Règles | Fait |
 |---|---|---|---|---|
-| 1 | **Ressources et référentiels.** Copier les 3 modèles Excel, `LOGO_Nox.ico`, `flash.png`, `eu_icon.svg` et `dpe_icon.svg` dans `ressources/` (racine du dépôt). `core/config.py` les retrouve, en développement comme dans l'exécutable. `models/referentiel.py` contient les exigences CE / DPE, l'alias RoHS, les champs et statuts CECC, les anciennes clés CECC, la correspondance exigence → colonne Excel, la liste des pays et le classement CECC. | — | R14, R19, R25 | ☐ |
+| 1 | **Ressources et référentiels.** Copier les 3 modèles Excel, `LOGO_Nox.ico`, `flash.png`, `eu_icon.svg` et `dpe_icon.svg` dans `ressources/` (racine du dépôt). `core/config.py` les retrouve, en développement comme dans l'exécutable. `models/referentiel.py` contient les exigences CE / DPE, l'alias RoHS, les champs et statuts CECC, les anciennes clés CECC, la correspondance exigence → colonne Excel, la liste des pays et le classement CECC. | — | R14, R19, R25 | ☑ |
 | 2 | **Thème et géométrie des fenêtres.** `ui/theme.py` (Fusion, palette claire, feuille de style, Segoe UI 10) et `ui/geometrie.py` (dimensionner et centrer sur le bon écran). | — | technique (AGENTS §4) | ☐ |
 | 3 | **Contrôles automatiques sur GitHub.** `.github/workflows/` lance `ruff`, les tests et le contrôle des couches à chaque envoi. | — | technique (décision 0002) | ☐ |
 
