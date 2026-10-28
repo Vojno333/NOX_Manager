@@ -122,7 +122,7 @@ def test_s11_r12_fiche_cecc(projet_essai, tmp_path):
 
 
 def test_s12_r12_fiche_pre_remplie(projet_essai):
-    fiche = depot.fiche_cecc_existante(projet_essai, "GAMMA", "REF-020")
+    fiche = depot.fiche_cecc_initiale(projet_essai, "GAMMA", "REF-020")
     assert fiche["cecc_etat"] == "Validé" and fiche["manufacturer_part_number"] == "MPN-GAMMA"
 
 
@@ -179,3 +179,14 @@ def test_etats_existants(projet_essai):
     etats = depot.etats_existants(projet_essai, "ACME", "REF-001", "CE", CE)
     assert etats["2006/42/UE"] == ap.APPLICABLE and etats["2014/35/UE"] == ap.NA
     assert depot.etats_existants(projet_essai, "DELTA", "REF-030", "CE", CE) is None
+
+
+def test_e4_premiere_fiche_cecc_pre_remplie_par_l_article(projet_essai):
+    assert depot.fiche_cecc_initiale(projet_essai, "ACME", "REF-001") == {
+        "manufacturer_doc": "ACME",
+        "manufacturer_part_number": "MNP-001",
+    }
+    # EPS / REF-040 a déjà une fiche : c'est elle qui est reprise.
+    assert depot.fiche_cecc_initiale(projet_essai, "EPS", "REF-040")[
+        "manufacturer_part_number"
+    ] == ("MPN-EPS")
