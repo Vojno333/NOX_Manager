@@ -13,7 +13,7 @@ from openpyxl.worksheet.cell_range import CellRange
 
 from openpyxl import load_workbook
 
-from .document_rules import REQ_NA, code_matches, doc_has_file, normalize_requirement_code, requirement_state
+from .document_rules import CECC_FREE_FIELDS, REQ_NA, cecc_field, cecc_status, code_matches, doc_has_file, normalize_requirement_code, requirement_state
 from .metadata_db import get_uploaded_documents
 from .project_manager import get_project_file_path
 
@@ -635,7 +635,7 @@ def _fill_cecc_sheet(ws, pairs, grouped_docs, project_dir, project_data):
             ws[f"D{i}"] = manufacturer_mpn
         ws[f"G{i}"] = cecc.get("manufacturer_doc", "")
         ws[f"H{i}"] = manufacturer_mpn
-        ws[f"I{i}"] = cecc.get("status", "")
+        ws[f"I{i}"] = cecc_status(cecc)
 
         # Colonne K = Nom du document CECC + lien cliquable
         display_name = cecc.get("nom_cecc", "") or first.get("stored_filename", "")
@@ -648,11 +648,11 @@ def _fill_cecc_sheet(ws, pairs, grouped_docs, project_dir, project_data):
             display_name,
         )
 
-        ws[f"L{i}"] = cecc.get("cecc_classement", "")
-        ws[f"M{i}"] = cecc.get("categorie_export", "")
-        ws[f"N{i}"] = cecc.get("licence", "")
-        ws[f"O{i}"] = cecc.get("numero_licence", "")
-        ws[f"P{i}"] = cecc.get("pays_origine_4a", "")
+        # Colonnes J et L à S : mêmes clés que le dialogue d'import
+        # (G, H, I et K sont traitées plus haut : MPN de repli, lien).
+        for key, _label, col in CECC_FREE_FIELDS:
+            if col not in ("G", "H", "I", "K"):
+                ws[f"{col}{i}"] = cecc_field(cecc, key)
 
     last_data_row = start_row + max(len(pairs), 1) - 1
     _update_cecc_footer_formulas(ws, proved_row, estimated_row, last_data_row)

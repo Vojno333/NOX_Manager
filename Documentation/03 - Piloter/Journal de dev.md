@@ -1,6 +1,6 @@
 ---
 tags: [nox, journal]
-maj: 2026-10-23
+maj: 2026-10-26
 ---
 
 ↑ [[00 - Index]]
@@ -13,6 +13,39 @@ Modèle d'entrée : [[Modèle - Entrée de journal]].
 
 
 ---
+
+## 2026-10-26 : remplacer / supprimer le justificatif d'une exigence
+**Objectif** : demande utilisateur — clic droit sur un nom de document du panneau de détail pour supprimer ou remplacer le justificatif de cette exigence.
+**Fait** :
+- `DetailPanel` : menu contextuel sur la colonne « Nom du document » (CE / DPE), code d'exigence porté par l'item (`_CODE_ROLE`), signaux `requestReplaceJustif` / `requestDeleteJustif`.
+- `metadata_db.py` : `set_document_requirements`, `detach_document_file`.
+- Dashboard : `_justif_docs_for_code` / `_remove_justif_for_code`. Le code est retiré de `requirement_codes` de **tous** les enregistrements avec fichier qui le couvrent (pas seulement le plus récent affiché), sinon un ancien document réapparaîtrait ou fausserait le score (ratio « estimation »).
+- Remplacement : `UploadDocumentDialog(preset_checked_codes=…)` pré-coche l'exigence ; après import, les anciens documents perdent **toutes** les exigences couvertes par le nouveau (pas seulement celle du clic droit : signalement utilisateur, l'ancien fichier restait quand on cochait plusieurs exigences). `_remove_justif_for_codes` retire tous les codes en une écriture par enregistrement (des retraits code par code sur des dicts déjà lus se seraient écrasés).
+**Décidé** : un enregistrement qui ne couvre plus aucune exigence n'est pas supprimé (il porte l'applicabilité, cf. `requirement_state`) mais perd son fichier ; le fichier est supprimé du disque s'il n'est plus référencé (ne pas aggraver [[Bugs connus#BUG-005]] : le compteur « Documents » compte les fichiers sur disque). RoHS : le retrait vaut pour CE et DPE (alias + copies jumelles). CECC non couvert (pas d'exigences, cf. BUG-001).
+**Vérifié** : retrait / détachement / suppression du fichier sur une base temporaire ; pré-cochage CE (deux RoHS liés) et DPE en offscreen. Pas encore testé à la main dans l'application.
+
+### Suite : complétude CECC toujours à 0 %
+Signalement utilisateur : statut « Validé » saisi, complétude CECC à 0 %. C'est [[Bugs connus#BUG-001]], pour le statut : le dialogue écrit `cecc_etat`, dashboard et export lisaient `status`.
+**Fait** : `document_rules.cecc_status()` (lit `cecc_etat`, repli `status`), utilisé par `_compute_cecc_completion` et la colonne I de l'export (dont dépendent les formules de pied de tableau). La complétude d'une ligne CECC ne prend plus que le **dernier** statut renseigné : 100 % si « Validé », 0 % sinon (avant, tout l'historique était moyenné : « Relancé » puis « Validé » aurait donné 50 %).
+**Reste** : les autres clés de BUG-001 (catégorie, licence, n° licence, pays 4a) et BUG-003 (liste des statuts, « Estimation » non saisissable).
+
+### Suite : champs CECC invisibles (fin de BUG-001) et molette des listes
+Signalement utilisateur : des champs CECC enregistrés ne s'affichent pas dans le panneau de détail. Cause : reste de l'ex-BUG-001 (retiré de [[Bugs connus]]), le panneau et l'export lisaient d'autres clés que celles écrites par `CECCPage` (`licence_yn`, `licence_number`, `pays_origine`, `categorie`, `ear99_value`, `eccn_value`, `composant_export_10_1`, `cecc_date`).
+**Fait** : `CECC_FREE_FIELDS` (jusque-là inutilisé) devient la liste de référence `(clé du dialogue, libellé, colonne d'export)` ; `cecc_field()` lit une clé avec repli sur les anciens noms (`_CECC_LEGACY_KEYS`). Panneau de détail et export (colonnes J, L à S) bouclent dessus : les colonnes J, Q, R, S, jamais remplies, le sont maintenant (vérifié : vides dans le template).
+**Décidé** : `pays_origine` = « Pays Origine 4a » (sens du dialogue depuis toujours). Les colonnes T (Pays d'origine 10.2), U (Classement 10.5), V (Code douanier) n'ont pas de champ de saisie : retirées du panneau (toujours vides), non exportées.
+- Listes déroulantes CECC : `_NoWheelComboBox` (focus `StrongFocus`, molette ignorée sans focus → la page défile au lieu de changer la valeur au survol).
+
+### Suite : « Supprimer la référence » limité à une BDD
+Demande utilisateur : le bouton doit supprimer les infos **et** les documents de la référence, pour la seule BDD de la ligne (CE, DPE ou CECC). Avant : toutes les BDD vidées en base, aucun fichier supprimé (ex-BUG-005, retiré de [[Bugs connus]]).
+**Fait** (`_on_delete_row`) : suppression des enregistrements dont le fichier est dans `BDD <type> <n°>/…` et des « applicabilité seule » saisis depuis cette BDD, puis des fichiers du dossier `Documents/<fournisseur>/<référence>` de cette BDD (y compris ceux déposés à la main). Confirmation listant les fichiers. La ligne reste dans `project.json`.
+**Décidé** : la copie RoHS rangée dans l'autre BDD est conservée mais réduite à ses codes RoHS (`_keep_only_rohs`) : saisie depuis la BDD supprimée, elle y comptait sinon encore pour toutes ses exigences (ex. Machine). RoHS étant commun, il reste visible des deux côtés. Nouveau `metadata_db` : `delete_uploaded_documents`, `set_document_code_lists`.
+**Vérifié** : suppression CE / DPE / CECC sur une base temporaire, dashboard réel en offscreen (complétude et détail des trois BDD avant/après).
+
+### Suite : lenteurs sur un projet en partage réseau
+Mesuré sur le projet O011 (`\\serveur2fs…`, 43 références, ~250 dossiers, ~40 ms par aller-retour réseau).
+- **Accueil, panneau d'infos : 23 s, interface figée.** `rglob` + `stat` sur tout le projet. Remplacé par `_compute_disk_stats` (`os.scandir` : taille/type livrés avec la liste du dossier) lancé dans le `QThreadPool` ; date, références, ouverture restent immédiates (`project.json`). Reste ~9 s en arrière-plan (un aller-retour par dossier, incompressible) ; dernière valeur connue affichée en attendant (cache mémoire de session).
+- **Ouverture du dashboard : ~8 s → 1,7 s.** `_count_documents_in_folder` parcourait 43 × 3 dossiers à chaque `_load_table` (y compris après chaque import) pour remplir `row["documents"]`, que **rien ne lisait** (colonne retirée du tableau). Supprimé.
+**Reste** : les 1,5 s restants sont SQLite (`PRAGMA journal_mode=WAL` à chaque connexion + checkpoint à la fermeture). Plus grave : SQLite déconseille le WAL sur un système de fichiers réseau (mémoire partagée `-shm` non fiable entre postes) → risque de base verrouillée ou corrompue si deux personnes ouvrent le projet. À trancher : repasser en `journal_mode=DELETE` (voir [[Dette technique]]).
 
 ## 2026-10-23 : modifier l'applicabilité effaçait les documents
 **Objectif** : signalement utilisateur — après un passage par le bouton « Applicabilité », les documents d'une référence semblaient effacés.

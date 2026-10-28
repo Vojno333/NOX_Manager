@@ -13,6 +13,7 @@ from .document_rules import (
     CE_REQUIREMENTS,
     CECC_FREE_FIELDS,
     CECC_STATUSES,
+    code_matches,
     is_rohs_code,
     requirement_state,
 )
@@ -1038,6 +1039,23 @@ class DPEPage(QtWidgets.QWidget):
 # ──────────────────────────────────────────────────────────────────────────────
 # CECC Informations page
 # ──────────────────────────────────────────────────────────────────────────────
+class _NoWheelComboBox(QtWidgets.QComboBox):
+    """Liste déroulante insensible à la molette tant qu'elle n'a pas été
+    cliquée : survoler la liste en faisant défiler la page ne change plus la
+    valeur choisie (la molette fait alors défiler la page)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # StrongFocus : le focus s'obtient au clic ou au clavier, pas à la molette.
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+
+    def wheelEvent(self, event: QtGui.QWheelEvent):
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()   # remonte à la zone de défilement parente
+
+
 class CECCPage(QtWidgets.QWidget):
     changed = QtCore.Signal()
 
@@ -1090,7 +1108,7 @@ class CECCPage(QtWidgets.QWidget):
                 col.addLayout(label_row)
 
                 if is_combo:
-                    w = QtWidgets.QComboBox()
+                    w = _NoWheelComboBox()
                     w.setEditable(False)
                     w.addItem("Sélectionner…")
                     if items:
@@ -1250,10 +1268,14 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         preset_justification_type: str | None = None,
         batch_targets: list[dict] | None = None,
         mode: str = "import",
+        preset_checked_codes: list[str] | None = None,
         parent=None,
     ):
         """*mode* : "import" (import de document, applicabilité modifiable)
-        ou "applicability" (gestion de l'applicabilité seule, sans document)."""
+        ou "applicability" (gestion de l'applicabilité seule, sans document).
+
+        *preset_checked_codes* : exigences pré-cochées (passées à «Applicable»)
+        à l'ouverture, ex. remplacement du justificatif d'une exigence."""
         super().__init__(parent)
         self.project_dir = project_dir
         self.supplier = supplier
@@ -1271,6 +1293,7 @@ class UploadDocumentDialog(QtWidgets.QDialog):
         self._init_type()
         self._prefill_existing_cecc_fields()
         self._prefill_existing_applicability()
+        self._preset_checked(preset_checked_codes or [])
         self._update_form_visibility()
         self._update_preview()
         # Calculé après la construction de l'UI (polices réelles, contenu
@@ -1328,6 +1351,15 @@ class UploadDocumentDialog(QtWidgets.QDialog):
                 continue
             for row in page._req_rows:
                 row.set_state(requirement_state(matching, row.code))
+
+    def _preset_checked(self, codes: list[str]):
+        if self.mode != "import" or not codes:
+            return
+        for page in (self._ce_page, self._dpe_page):
+            for row in page._req_rows:
+                if any(code_matches(row.code, c) for c in codes):
+                    row.set_state(2)   # la case n'est active qu'en «Applicable»
+                    row.set_row_checked(True)
 
     # ── UI construction ───────────────────────────────────────────────────────
 

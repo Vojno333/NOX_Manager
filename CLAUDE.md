@@ -10,7 +10,7 @@ Trois types de « BDD » (`JUSTIFICATION_TYPES = ("CE", "CECC", "DPE")`, défini
 |---|---|---|
 | **CE** | Marquage CE | `CE_REQUIREMENTS` (Machine, RoHS, EMC, ESP…) |
 | **DPE** | Exigences environnementales | `DPE_REQUIREMENTS` (RoHS, DEEE, REACh, POP…) |
-| **CECC** | Contrôle export | `CECC_FREE_FIELDS` (champs libres : ECCN, licence, pays d'origine, code douanier…) et `CECC_STATUSES` |
+| **CECC** | Contrôle export | `CECC_FREE_FIELDS` (clé saisie par le dialogue, libellé, colonne d'export ; lecture via `cecc_field()`, qui accepte les anciennes clés) et `CECC_STATUSES` |
 
 Flux utilisateur : créer un projet (liste de références) → déposer des documents (PDF/DOCX/XLSX) et cocher l'applicabilité de chaque exigence (**tri-état** : applicable / non applicable / non renseigné) → suivre l'avancement dans le dashboard → **exporter** les fichiers Excel `Template_BDD_*_N0X.xlsx` remplis (liens hypertexte vers les documents).
 

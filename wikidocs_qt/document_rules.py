@@ -26,22 +26,47 @@ CE_REQUIREMENTS = [
     ("2014/68/UE", "Directive équipement sous préssion"),
 ]
 
+# Champs CECC : (clé enregistrée dans `cecc_fields`, libellé, colonne de
+# l'export CECC). Les clés sont celles qu'écrit `CECCPage` (dialogue
+# d'import) : source unique pour le panneau de détail et l'export.
 CECC_FREE_FIELDS = [
-    ("manufacturer_doc", "Fournisseur Doc / MANUFACTURER"),
-    ("manufacturer_part_number", "Manufacturer Part Number"),
-    ("nom_cecc", "Nom : CECC"),
-    ("cecc_classement", "CECC Classement"),
-    ("categorie_export", "Catégorie (EAR99 / Code ECCN / Code ML ITAR)"),
-    ("licence", "Licence Oui / Non"),
-    ("numero_licence", "N° Licence"),
-    ("pays_origine_4a", "Pays Origine 4a"),
-    ("ear99_value_usd", "EAR99 Value (USD)"),
-    ("eccn_value_usd", "ECCN value (USD)"),
-    ("composants_controles_export", "Composant controlés à l'export et intégrés dans l'article"),
-    ("pays_origine", "Pays d'origine"),
-    ("classement_export", "Classement à l'export"),
-    ("code_douanier", "Code douanier / Tariff Code"),
+    ("manufacturer_doc", "Fournisseur Doc / MANUFACTURER", "G"),
+    ("manufacturer_part_number", "Manufacturer Part Number", "H"),
+    ("cecc_etat", "Statut CECC", "I"),
+    ("cecc_date", "CECC : Date", "J"),
+    ("nom_cecc", "Nom : CECC", "K"),
+    ("cecc_classement", "CECC Classement", "L"),
+    ("categorie", "Catégorie (EAR99 / Code ECCN / Code ML ITAR)", "M"),
+    ("licence_yn", "Licence Oui / Non", "N"),
+    ("licence_number", "N° Licence", "O"),
+    ("pays_origine", "Pays Origine 4a", "P"),
+    ("ear99_value", "EAR99 Value (USD)", "Q"),
+    ("eccn_value", "ECCN value (USD)", "R"),
+    ("composant_export_10_1", "Composant contrôlés à l'export et intégrés dans l'article (10.1)", "S"),
 ]
+
+# Anciennes clés lues en repli (cf. BUG-001 : dashboard et export lisaient
+# ces noms, que le dialogue n'a jamais écrits).
+_CECC_LEGACY_KEYS = {
+    "cecc_etat": ("status",),
+    "categorie": ("categorie_export",),
+    "licence_yn": ("licence",),
+    "licence_number": ("numero_licence",),
+    "pays_origine": ("pays_origine_4a",),
+    "ear99_value": ("ear99_value_usd",),
+    "eccn_value": ("eccn_value_usd",),
+    "composant_export_10_1": ("composants_controles_export",),
+}
+
+
+def cecc_field(cecc_fields: dict | None, key: str) -> str:
+    """Valeur d'un champ CECC, en acceptant les anciennes clés."""
+    fields = cecc_fields or {}
+    for k in (key, *_CECC_LEGACY_KEYS.get(key, ())):
+        value = str(fields.get(k) or "").strip()
+        if value:
+            return value
+    return ""
 
 CECC_STATUSES = (
     "Validé",
@@ -49,6 +74,11 @@ CECC_STATUSES = (
     "Non conforme",
     "Estimation",
 )
+
+
+def cecc_status(cecc_fields: dict | None) -> str:
+    """Statut CECC d'un enregistrement (`cecc_etat`, repli `status`)."""
+    return cecc_field(cecc_fields, "cecc_etat")
 
 # ── Résolution de l'applicabilité (partagée dashboard / export / dialogue) ──
 # États : 0 = N/A, 1 = Non défini, 2 = Applicable (cf. ThreeStateToggle).

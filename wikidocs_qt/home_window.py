@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from datetime import datetime
 import getpass
@@ -371,7 +372,39 @@ class SearchLineEdit(QtWidgets.QLineEdit):
 # ──────────────────────────────────────────────────────────────────────────────
 # HomeWindow
 # ──────────────────────────────────────────────────────────────────────────────
+def _compute_disk_stats(project_dir: Path) -> tuple[int, int]:
+    """(nb de fichiers sous un dossier « Documents », taille totale en octets).
+
+    `os.scandir` plutôt que `rglob` + `stat` : sous Windows, taille et type
+    arrivent avec la liste du dossier, sans requête supplémentaire par fichier
+    (décisif sur un partage réseau). Appelé hors du thread graphique.
+    """
+    doc_count = 0
+    total_size = 0
+    stack: list[tuple[str, bool]] = [(str(project_dir), False)]
+    while stack:
+        folder, in_documents = stack.pop()
+        try:
+            with os.scandir(folder) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append((entry.path, in_documents or entry.name == "Documents"))
+                        elif entry.is_file(follow_symlinks=False):
+                            total_size += entry.stat(follow_symlinks=False).st_size
+                            doc_count += in_documents
+                    except OSError:
+                        continue
+        except OSError:
+            continue
+    return doc_count, total_size
+
+
 class HomeWindow(QtWidgets.QMainWindow):
+    # (clé projet, nb documents, taille) — émis depuis un thread de calcul.
+    # Taille en « object » : un int Qt 32 bits déborderait au-delà de 2 Go.
+    _disk_stats_ready = QtCore.Signal(str, int, object)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("NOX_Manager")
@@ -380,6 +413,9 @@ class HomeWindow(QtWidgets.QMainWindow):
 
         self.project_manager = ProjectManager()
         self.project_windows: list[ProjectDashboardWindow] = []
+        self._disk_stats_cache: dict[str, tuple[int, int]] = {}
+        self._disk_stats_pending = ""
+        self._disk_stats_ready.connect(self._on_disk_stats_ready)
 
         self._build_ui()
         self._load_recent_projects()
@@ -734,53 +770,46 @@ class HomeWindow(QtWidgets.QMainWindow):
 
     def _show_project_info(self, data: dict):
         project_dir = Path(data.get("path", "")) if data.get("path") else None
-        if project_dir and project_dir.exists():
-            QtWidgets.QApplication.setOverrideCursor(QtCore.Qt.WaitCursor)
-            try:
-                stats = self._compute_project_stats(project_dir)
-            finally:
-                QtWidgets.QApplication.restoreOverrideCursor()
-        else:
-            stats = {}
+        # exists() d'abord : load_project crée `.nox` s'il manque.
+        project_data = (
+            self.project_manager.load_project(project_dir)
+            if project_dir and project_dir.exists() else None
+        )
 
         self._row_created.set_value(
-            self._format_datetime(stats.get("created_at", "")) or "—"
+            self._format_datetime((project_data or {}).get("created_at", "")) or "—"
         )
         self._row_opened.set_value(
             self._format_datetime(data.get("last_opened", "")) or "—"
         )
-        self._row_refs.set_value(str(stats.get("references_count", "—")))
-        self._row_docs.set_value(str(stats.get("documents_count", "—")))
-        self._row_size.set_value(stats.get("size", "—"))
+        self._row_refs.set_value(
+            str(len((project_data or {}).get("rows", []) or [])) if project_data else "—"
+        )
         self.info_stack.setCurrentIndex(1)
 
-    def _compute_project_stats(self, project_dir: Path) -> dict:
-        """Infos calculées à la volée à partir du dossier projet (lu sur
-        disque, jamais mises en cache : reflètent toujours l'état réel)."""
-        stats: dict = {}
+        if not project_data:
+            self._row_docs.set_value("—")
+            self._row_size.set_value("—")
+            return
 
-        project_data = self.project_manager.load_project(project_dir)
-        stats["created_at"] = (project_data or {}).get("created_at", "")
-        stats["references_count"] = len((project_data or {}).get("rows", []) or [])
+        # Parcours du disque en arrière-plan : sur un partage réseau il prend
+        # plusieurs secondes (un aller-retour par dossier). On affiche la
+        # dernière valeur connue en attendant la valeur à jour.
+        key = str(project_dir)
+        cached = self._disk_stats_cache.get(key)
+        self._row_docs.set_value(f"{cached[0]}  (actualisation…)" if cached else "Calcul…")
+        self._row_size.set_value(f"{human_size(cached[1])}  (actualisation…)" if cached else "Calcul…")
+        self._disk_stats_pending = key
+        QtCore.QThreadPool.globalInstance().start(
+            lambda: self._disk_stats_ready.emit(key, *_compute_disk_stats(project_dir))
+        )
 
-        doc_count = 0
-        total_size = 0
-        try:
-            for f in project_dir.rglob("*"):
-                if not f.is_file():
-                    continue
-                try:
-                    total_size += f.stat().st_size
-                except OSError:
-                    continue
-                if "Documents" in f.parts:
-                    doc_count += 1
-        except OSError:
-            pass
-
-        stats["documents_count"] = doc_count
-        stats["size"] = human_size(total_size)
-        return stats
+    def _on_disk_stats_ready(self, key: str, doc_count: int, total_size: int):
+        self._disk_stats_cache[key] = (doc_count, total_size)
+        if key != self._disk_stats_pending:
+            return   # la sélection a changé entre-temps
+        self._row_docs.set_value(str(doc_count))
+        self._row_size.set_value(human_size(total_size))
 
     # ── Actions ───────────────────────────────────────────────────────────────
 

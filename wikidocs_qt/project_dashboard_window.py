@@ -13,12 +13,15 @@ from PySide6.QtGui import QColor, QFont, QPalette
 from PySide6.QtSvg import QSvgRenderer
 
 from .filter_popup import FilterPopup
-from .metadata_db import init_metadata_db, get_uploaded_documents
+from .metadata_db import (
+    init_metadata_db, get_uploaded_documents, delete_uploaded_documents,
+    set_document_requirements, set_document_code_lists, detach_document_file,
+)
 from .upload_document_dialog import UploadDocumentDialog
 from .export_templates import export_project_templates
 from .document_rules import (
     CE_REQUIREMENTS, DPE_REQUIREMENTS, JUSTIFICATION_TYPES,
-    REQ_APPLICABLE, REQ_NA, code_matches, doc_has_file, is_rohs_code,
+    CECC_FREE_FIELDS, REQ_APPLICABLE, REQ_NA, cecc_field, cecc_status, code_matches, doc_has_file, is_rohs_code,
     normalize_requirement_code, requirement_state,
 )
 from .project_manager import ProjectManager
@@ -361,6 +364,10 @@ class DetailPanel(QtWidgets.QFrame):
     requestModify  = QtCore.Signal(dict)   # emits row_data
     requestDelete  = QtCore.Signal(dict)   # emits row_data
     requestOpenDoc = QtCore.Signal(str)    # emits file path
+    requestReplaceJustif = QtCore.Signal(dict, str)   # emits row_data, requirement code
+    requestDeleteJustif  = QtCore.Signal(dict, str)   # emits row_data, requirement code
+
+    _CODE_ROLE = Qt.UserRole + 1
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -476,6 +483,10 @@ class DetailPanel(QtWidgets.QFrame):
         footer_lay.addLayout(btn_row)
 
         self._btn_delete = QtWidgets.QPushButton("🗑   Supprimer la référence")
+        self._btn_delete.setToolTip(
+            "Supprime les informations et les documents de cette référence "
+            "pour la BDD affichée uniquement (CE, DPE ou CECC)"
+        )
         self._btn_delete.setFont(F_BODY)
         self._btn_delete.setCursor(Qt.PointingHandCursor)
         self._btn_delete.setFixedHeight(34)
@@ -533,6 +544,8 @@ class DetailPanel(QtWidgets.QFrame):
             QTableWidget::item {{ padding:4px 6px; color:{DARK}; }}
         """)
         t.cellClicked.connect(self._on_doc_clicked)
+        t.setContextMenuPolicy(Qt.CustomContextMenu)
+        t.customContextMenuRequested.connect(self._on_doc_context_menu)
         return t
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -616,8 +629,12 @@ class DetailPanel(QtWidgets.QFrame):
                 font = file_item.font()
                 font.setUnderline(True)
                 file_item.setFont(font)
-                file_item.setToolTip("Cliquer pour ouvrir")
+                file_item.setToolTip(
+                    "Cliquer pour ouvrir" if is_cecc
+                    else "Cliquer pour ouvrir · clic droit pour remplacer ou supprimer"
+                )
             file_item.setData(Qt.UserRole, detail.get("path", ""))
+            file_item.setData(self._CODE_ROLE, detail.get("code", ""))
             self._tbl_docs.setItem(i, doc_col, file_item)
 
         self._tbl_docs.resizeRowsToContents()
@@ -682,6 +699,71 @@ class DetailPanel(QtWidgets.QFrame):
             path = item.data(Qt.UserRole)
             if path:
                 self.requestOpenDoc.emit(str(path))
+
+    def _on_doc_context_menu(self, pos: QtCore.QPoint):
+        """Clic droit sur un nom de document (CE / DPE uniquement)."""
+        if not self._row_data or self._tbl_docs.columnCount() != 3:
+            return
+        index = self._tbl_docs.indexAt(pos)
+        if not index.isValid() or index.column() != 2:
+            return
+        item = self._tbl_docs.item(index.row(), 2)
+        if not item or not item.text():
+            return
+        path = str(item.data(Qt.UserRole) or "")
+        code = str(item.data(self._CODE_ROLE) or "")
+        if not code:
+            return
+
+        menu = QtWidgets.QMenu(self._tbl_docs)
+        # Fond explicite : sinon le menu hérite du « background:transparent »
+        # du panneau et s'affiche sur fond noir.
+        menu.setWindowFlags(menu.windowFlags() | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
+        menu.setAttribute(Qt.WA_TranslucentBackground)
+        menu.setFont(F_BODY)
+        menu.setStyleSheet(f"""
+            QMenu {{
+                background:{WHITE}; color:{DARK};
+                border:1px solid {GRAY_CARD}; border-radius:8px;
+                padding:4px;
+            }}
+            QMenu::item {{
+                background:transparent; color:{DARK};
+                padding:7px 18px 7px 12px; border-radius:6px;
+            }}
+            QMenu::item:selected {{ background:{BLUE_LIGHT}; color:{BLUE}; }}
+            QMenu::item:disabled {{ color:{GRAY_TEXT}; }}
+            QMenu::separator {{ height:1px; background:{GRAY_BORDER}; margin:4px 6px; }}
+        """)
+        row_data = self._row_data
+        act_open = menu.addAction("Ouvrir le document")
+        act_open.setEnabled(bool(path))
+        act_open.triggered.connect(lambda: self.requestOpenDoc.emit(path))
+        menu.addAction("Remplacer le justificatif…").triggered.connect(
+            lambda: self.requestReplaceJustif.emit(row_data, code)
+        )
+        menu.addSeparator()
+
+        # Action destructive en rouge : QMenu::item ne permet pas de styler
+        # une action précise, d'où un QLabel dans un QWidgetAction.
+        delete_lbl = QtWidgets.QLabel("Supprimer le justificatif")
+        delete_lbl.setFont(F_BODY)
+        delete_lbl.setStyleSheet(f"""
+            QLabel {{ color:{RED_KO}; background:transparent; padding:7px 18px 7px 12px; border-radius:6px; }}
+            QLabel:hover {{ background:{RED_BG}; }}
+        """)
+        act_delete = QtWidgets.QWidgetAction(menu)
+        act_delete.setDefaultWidget(delete_lbl)
+        act_delete.triggered.connect(lambda: self.requestDeleteJustif.emit(row_data, code))
+        menu.addAction(act_delete)
+
+        def _on_delete_clicked(_event):
+            menu.close()
+            # Après la fermeture du menu : la confirmation est modale.
+            QtCore.QTimer.singleShot(0, act_delete.trigger)
+        delete_lbl.mouseReleaseEvent = _on_delete_clicked
+
+        menu.exec(self._tbl_docs.viewport().mapToGlobal(pos))
 
     def _on_modify(self):
         if self._row_data:
@@ -1086,6 +1168,8 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self.detail_panel.requestModify.connect(self._on_modify_row)
         self.detail_panel.requestDelete.connect(self._on_delete_row)
         self.detail_panel.requestOpenDoc.connect(self._open_file)
+        self.detail_panel.requestReplaceJustif.connect(self._on_replace_justif)
+        self.detail_panel.requestDeleteJustif.connect(self._on_delete_justif)
 
         splitter.addWidget(self.detail_panel)
 
@@ -1239,19 +1323,6 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
 
         return False
 
-    def _count_documents_in_folder(self, supplier: str, reference: str, justif_type: str) -> int:
-        dossier_number = self.project_data.get("dossier_number", "")
-        folder = (
-            self.project_dir
-            / f"BDD {justif_type} {dossier_number}"
-            / "Documents"
-            / supplier
-            / reference
-        )
-        if not folder.exists() or not folder.is_dir():
-            return 0
-        return sum(1 for p in folder.iterdir() if p.is_file())
-
     def _compute_requirement_score(self, docs: list[dict], code: str) -> float:
         # Seuls les enregistrements avec un fichier couvrent une exigence :
         # un enregistrement « applicabilité seule » ne prouve rien.
@@ -1277,10 +1348,15 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         return sum(self._compute_requirement_score(docs, c) for c in applicable) / len(applicable)
 
     def _compute_cecc_completion(self, docs: list[dict]) -> float:
-        statuses = [(d.get("cecc_fields") or {}).get("status", "").strip() for d in docs]
-        valides  = sum(1 for s in statuses if s == "Validé")
-        total    = sum(1 for s in statuses if s in ("Validé", "Relancé", "Non conforme", "Estimation"))
-        return valides / total if total else 0.0
+        """100 % si le statut CECC le plus récent est « Validé », 0 % sinon.
+        Seul le dernier statut compte : un ancien « Relancé » ne doit pas
+        diviser par deux une référence validée depuis."""
+        latest = max(
+            (d for d in docs if cecc_status(d.get("cecc_fields"))),
+            key=lambda d: d.get("uploaded_at", ""),
+            default=None,
+        )
+        return 1.0 if latest and cecc_status(latest.get("cecc_fields")) == "Validé" else 0.0
 
     def _scan_supplier_reference_pairs(self) -> list[tuple[str, str]]:
         rows = self.project_data.get("rows") or []
@@ -1345,8 +1421,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             all_docs_for_ref = by_sup_ref.get((supplier, reference), [])
 
             for justif_type in self.enabled_bdds:
-                docs      = [d for d in all_docs_for_ref if self._doc_applies_to_type(d, justif_type)]
-                doc_count = self._count_documents_in_folder(supplier, reference, justif_type)
+                docs = [d for d in all_docs_for_ref if self._doc_applies_to_type(d, justif_type)]
 
                 if justif_type == "CE":
                     completion_value = self._compute_ce_dpe_completion(docs, CE_CODES)
@@ -1362,7 +1437,6 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
                     "order_number":     meta.get("order_number", ""),
                     "mnp":              meta.get("mnp", ""),
                     "type":             justif_type,
-                    "documents":        doc_count,
                     "documents_db":     len(docs),
                     "completion":       f"{round(completion_value * 100)} %",
                     "completion_value": completion_value,
@@ -1500,6 +1574,7 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
             is_na = state == REQ_NA
             label = default_label
             detail_rows.append({
+                "code":        code,
                 "requirement": f"{code} | {label}",
                 "applicability": (
                     "Non applicable" if is_na
@@ -1512,30 +1587,13 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         return detail_rows
 
     def _build_cecc_rows(self, docs: list[dict]) -> list[dict]:
-        PRETTY = {
-            "manufacturer_doc":           "Fournisseur Doc / MANUFACTURER",
-            "manufacturer_part_number":   "Manufacturer Part Number",
-            "nom_cecc":                   "Nom : CECC",
-            "cecc_classement":            "CECC Classement",
-            "categorie_export":           "Catégorie export",
-            "licence":                    "Licence",
-            "numero_licence":             "N° Licence",
-            "pays_origine_4a":            "Pays Origine 4a",
-            "ear99_value_usd":            "EAR99 Value (USD)",
-            "eccn_value_usd":             "ECCN value (USD)",
-            "composants_controles_export":"Composants contrôlés export",
-            "pays_origine":               "Pays d'origine",
-            "classement_export":          "Classement à l'export",
-            "code_douanier":              "Code douanier / Tariff Code",
-            "cecc_etat":                  "Statut CECC",
-        }
         latest_doc = max(docs, key=lambda d: d.get("uploaded_at", ""), default=None)
         fields = ((latest_doc.get("cecc_fields") or {}) if latest_doc else {})
         path   = str(self.project_dir / latest_doc["relative_path"]) if latest_doc else ""
 
         rows: list[dict] = []
-        for key, label in PRETTY.items():
-            val = str(fields.get(key, "") or "").strip()
+        for key, label, _col in CECC_FREE_FIELDS:
+            val = cecc_field(fields, key)
             rows.append({
                 "requirement": label,
                 "filename":    val,
@@ -1640,19 +1698,240 @@ class ProjectDashboardWindow(QtWidgets.QMainWindow):
         self._open_upload_from_selection()
 
     def _on_delete_row(self, row_data: dict):
-        sup = row_data.get("supplier", "")
-        ref = row_data.get("reference", "")
-        ans = QtWidgets.QMessageBox.question(
-            self,
-            "Supprimer la référence",
-            f"Supprimer tous les documents de {sup} / {ref} ?",
+        """Vide la référence pour la SEULE BDD de la ligne (CE, DPE ou CECC) :
+        enregistrements en base et fichiers du dossier de cette BDD. Les
+        autres BDD et la ligne du projet (`project.json`) sont conservées."""
+        sup   = row_data.get("supplier", "")
+        ref   = row_data.get("reference", "")
+        jtype = str(row_data.get("type", "")).upper()
+        bdd_dirname = f"BDD {jtype} {self.project_data.get('dossier_number', '')}"
+
+        # Enregistrements de cette BDD : ceux dont le fichier est rangé dans
+        # son dossier, et les enregistrements « applicabilité seule » saisis
+        # depuis elle. La copie RoHS rangée dans l'autre BDD est conservée,
+        # mais réduite à RoHS (`to_trim`) : saisie depuis cette BDD, elle y
+        # compterait encore pour toutes ses exigences (ex. Machine).
+        to_delete, to_trim = [], []
+        for d in get_uploaded_documents(self.project_dir):
+            if d["supplier"] != sup or d["reference"] != ref:
+                continue
+            from_this_bdd = str(d.get("source_justification_type", "")).upper() == jtype
+            if doc_has_file(d) and Path(d["relative_path"]).parts[0] == bdd_dirname:
+                to_delete.append(d)
+            elif from_this_bdd and not doc_has_file(d):
+                to_delete.append(d)
+            elif from_this_bdd:
+                to_trim.append(d)
+
+        # Fichiers : ceux des enregistrements supprimés + tout fichier resté
+        # dans le dossier de la référence pour cette BDD.
+        files = {self.project_dir / d["relative_path"] for d in to_delete if doc_has_file(d)}
+        ref_dir = self.project_dir / bdd_dirname / "Documents" / sup / ref
+        try:
+            files |= {p for p in ref_dir.iterdir() if p.is_file()}
+        except OSError:
+            pass
+        files = {f for f in files if f.exists()}
+
+        if not to_delete and not files:
+            QtWidgets.QMessageBox.information(
+                self, "Supprimer la référence",
+                f"Aucune information ni aucun document {jtype} pour {sup} / {ref}."
+            )
+            return
+
+        names = sorted(f.name for f in files)
+        shown = "\n".join(f"• {n}" for n in names[:15])
+        if len(names) > 15:
+            shown += f"\n• … et {len(names) - 15} autre(s)"
+        msg = (
+            f"Supprimer les informations {jtype} de {sup} / {ref} ?\n\n"
+            f"• {len(to_delete)} enregistrement(s) {jtype} (exigences, applicabilité"
+            f"{', champs CECC' if jtype == 'CECC' else ''})\n"
+            f"• {len(files)} fichier(s) du dossier « {bdd_dirname} »"
+            + (f" :\n{shown}" if shown else "")
+            + "\n\nLes autres BDD ne sont pas touchées. Cette action est irréversible."
+        )
+        if jtype in ("CE", "DPE"):
+            msg += ("\n\nRoHS est commun au CE et au DPE : un justificatif RoHS "
+                    "rangé dans l'autre BDD restera visible ici.")
+        ans = QtWidgets.QMessageBox.warning(
+            self, "Supprimer la référence", msg,
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.No,
         )
-        if ans == QtWidgets.QMessageBox.Yes:
-            from .metadata_db import delete_uploaded_documents_for_rows
-            delete_uploaded_documents_for_rows(self.project_dir, [row_data])
-            self._load_table()
+        if ans != QtWidgets.QMessageBox.Yes:
+            return
+
+        delete_uploaded_documents(self.project_dir, [d["id"] for d in to_delete])
+        for d in to_trim:
+            self._keep_only_rohs(d)
+        still_used = {
+            (self.project_dir / d["relative_path"]).resolve()
+            for d in get_uploaded_documents(self.project_dir) if doc_has_file(d)
+        }
+        failed = []
+        for f in files:
+            if f.resolve() in still_used:
+                continue
+            try:
+                f.unlink(missing_ok=True)
+            except OSError as e:
+                failed.append(f"{f.name} : {e}")
+        if failed:
+            QtWidgets.QMessageBox.warning(
+                self, "Suppression incomplète",
+                "Certains fichiers n'ont pas pu être supprimés (ouverts ailleurs ?) :\n\n"
+                + "\n".join(failed)
+            )
+        self._reload_and_reselect(row_data)
+
+    def _keep_only_rohs(self, doc: dict):
+        """Réduit un enregistrement à ses codes RoHS (seule exigence commune
+        CE / DPE), labels gardés alignés sur leurs codes."""
+        def rohs_pairs(codes_key: str, labels_key: str | None):
+            codes  = list(doc.get(codes_key) or [])
+            labels = list(doc.get(labels_key) or []) if labels_key else []
+            kept = [i for i, c in enumerate(codes) if self._is_rohs_code(c)]
+            return [codes[i] for i in kept], [labels[i] for i in kept if i < len(labels)]
+
+        req_codes, req_labels = rohs_pairs("requirement_codes", "requirement_labels")
+        na_codes, na_labels   = rohs_pairs("not_applicable_codes", "not_applicable_labels")
+        set_document_code_lists(self.project_dir, doc["id"], {
+            "requirement_codes":     req_codes,
+            "requirement_labels":    req_labels,
+            "applicable_codes":      rohs_pairs("applicable_codes", None)[0],
+            "not_applicable_codes":  na_codes,
+            "not_applicable_labels": na_labels,
+        })
+        if not req_codes and doc_has_file(doc):
+            # Ne justifie plus rien : même traitement qu'un justificatif retiré.
+            self._detach_and_delete_file(doc)
+
+    # ── Justificatif d'une exigence (clic droit dans le panneau de détail) ──
+    def _justif_docs_for_code(self, row_data: dict, code: str, before: str | None = None) -> list[dict]:
+        """Enregistrements AVEC fichier de la ligne (fournisseur / référence /
+        BDD) qui couvrent *code*. *before* : seulement ceux déposés avant."""
+        sup, ref, jtype = row_data["supplier"], row_data["reference"], row_data["type"]
+        return [
+            d for d in get_uploaded_documents(self.project_dir)
+            if d["supplier"] == sup and d["reference"] == ref
+            and self._doc_applies_to_type(d, jtype)
+            and doc_has_file(d)
+            and any(self._code_matches(c, code) for c in (d.get("requirement_codes") or []))
+            and (before is None or d.get("uploaded_at", "") < before)
+        ]
+
+    def _remove_justif_for_codes(self, docs: list[dict], removed_codes: list[str]) -> list[str]:
+        """Retire *removed_codes* des exigences couvertes par *docs* (en une
+        seule écriture par enregistrement). Un enregistrement qui ne couvre
+        plus rien garde son applicabilité mais perd son fichier, supprimé du
+        disque s'il n'est plus référencé. Renvoie les fichiers supprimés."""
+        removed_files: list[str] = []
+        for doc in docs:
+            codes  = list(doc.get("requirement_codes") or [])
+            labels = list(doc.get("requirement_labels") or [])
+            kept = [
+                i for i, c in enumerate(codes)
+                if not any(self._code_matches(c, r) for r in removed_codes)
+            ]
+            if len(kept) == len(codes):
+                continue
+            new_codes  = [codes[i] for i in kept]
+            new_labels = [labels[i] for i in kept if i < len(labels)]
+            set_document_requirements(self.project_dir, doc["id"], new_codes, new_labels)
+            if not new_codes:
+                removed = self._detach_and_delete_file(doc)
+                if removed:
+                    removed_files.append(removed)
+        return removed_files
+
+    def _detach_and_delete_file(self, doc: dict) -> str | None:
+        """L'enregistrement perd son fichier (il garde son applicabilité) ;
+        le fichier est supprimé du disque s'il n'est plus référencé.
+        Renvoie le nom du fichier supprimé."""
+        detach_document_file(self.project_dir, doc["id"])
+        rel = doc["relative_path"]
+        if any(d["relative_path"] == rel for d in get_uploaded_documents(self.project_dir)):
+            return None
+        try:
+            (self.project_dir / rel).unlink(missing_ok=True)
+        except OSError as e:
+            QtWidgets.QMessageBox.warning(
+                self, "Suppression du fichier",
+                f"Impossible de supprimer le fichier :\n\n{self.project_dir / rel}\n\n{e}"
+            )
+            return None
+        return doc.get("stored_filename") or Path(rel).name
+
+    def _on_delete_justif(self, row_data: dict, code: str):
+        docs = self._justif_docs_for_code(row_data, code)
+        if not docs:
+            return
+        names = sorted({d.get("stored_filename", "") for d in docs})
+        msg = (
+            f"Retirer le justificatif de l'exigence {code} pour "
+            f"{row_data['supplier']} / {row_data['reference']} ?\n\n"
+            + "\n".join(f"• {n}" for n in names)
+            + "\n\nL'exigence reste «Applicable», sans document. Un fichier qui "
+              "ne justifie plus aucune exigence est supprimé du dossier projet."
+        )
+        if self._is_rohs_code(code):
+            msg += "\n\nRoHS est commun au CE et au DPE : le retrait s'applique aux deux."
+        ans = QtWidgets.QMessageBox.question(
+            self, "Supprimer le justificatif", msg,
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
+            QtWidgets.QMessageBox.No,
+        )
+        if ans != QtWidgets.QMessageBox.Yes:
+            return
+        self._remove_justif_for_codes(docs, [code])
+        self._reload_and_reselect(row_data)
+
+    def _on_replace_justif(self, row_data: dict, code: str):
+        started_at = datetime.now().isoformat()
+        dlg = UploadDocumentDialog(
+            project_dir=self.project_dir,
+            supplier=row_data["supplier"],
+            reference=row_data["reference"],
+            preset_justification_type=row_data["type"],
+            preset_checked_codes=[code],
+            parent=self,
+        )
+        if dlg.exec() != QtWidgets.QDialog.Accepted:
+            return
+
+        # Le nouveau document remplace les anciens pour TOUTES les exigences
+        # qu'il couvre : celle du clic droit, mais aussi celles cochées en plus
+        # dans le dialogue (ou seulement celles-ci si elle a été décochée).
+        sup, ref = row_data["supplier"], row_data["reference"]
+        file_docs = [
+            d for d in get_uploaded_documents(self.project_dir)
+            if d["supplier"] == sup and d["reference"] == ref and doc_has_file(d)
+        ]
+        new_docs = [d for d in file_docs if d.get("uploaded_at", "") >= started_at]
+        new_codes = [c for d in new_docs for c in (d.get("requirement_codes") or [])]
+        new_types = {str(d.get("source_justification_type", "")).upper() for d in new_docs}
+        old_docs = [
+            d for d in file_docs
+            if d.get("uploaded_at", "") < started_at
+            and any(self._doc_applies_to_type(d, t) for t in new_types)
+        ]
+        if new_codes:
+            self._remove_justif_for_codes(old_docs, new_codes)
+        self._reload_and_reselect(row_data)
+
+    def _reload_and_reselect(self, row_data: dict):
+        """Recharge le tableau puis réaffiche le détail de la même ligne."""
+        self._reload_after_import()
+        key = (row_data["supplier"], row_data["reference"], row_data["type"])
+        fresh = next(
+            (r for r in self._all_rows_cache
+             if (r["supplier"], r["reference"], r["type"]) == key),
+            None,
+        )
+        if fresh:
+            self._on_row_selected(fresh)
 
     def _open_file(self, file_path: str):
         path = Path(file_path)

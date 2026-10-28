@@ -218,6 +218,87 @@ def get_latest_cecc_fields(
     return {}
 
 
+def set_document_requirements(
+    project_dir: Path,
+    doc_id: int,
+    requirement_codes: list[str],
+    requirement_labels: list[str],
+) -> None:
+    conn = connect_metadata_db(project_dir)
+    try:
+        conn.execute(
+            """
+            UPDATE uploaded_documents
+            SET requirement_codes_json = ?, requirement_labels_json = ?
+            WHERE id = ?
+            """,
+            (
+                json.dumps(requirement_codes, ensure_ascii=False),
+                json.dumps(requirement_labels, ensure_ascii=False),
+                doc_id,
+            ),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+_CODE_LIST_COLUMNS = (
+    "requirement_codes", "requirement_labels", "applicable_codes",
+    "not_applicable_codes", "not_applicable_labels",
+)
+
+
+def set_document_code_lists(project_dir: Path, doc_id: int, lists: dict[str, list[str]]) -> None:
+    """Réécrit les listes de codes indiquées (clés de `_CODE_LIST_COLUMNS`)."""
+    columns = [k for k in lists if k in _CODE_LIST_COLUMNS]
+    if not columns:
+        return
+    conn = connect_metadata_db(project_dir)
+    try:
+        conn.execute(
+            "UPDATE uploaded_documents SET "
+            + ", ".join(f"{c}_json = ?" for c in columns)
+            + " WHERE id = ?",
+            [json.dumps(lists[c], ensure_ascii=False) for c in columns] + [doc_id],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def detach_document_file(project_dir: Path, doc_id: int) -> None:
+    """L'enregistrement devient « applicabilité seule » : son état
+    d'applicabilité est conservé, mais il ne référence plus aucun fichier."""
+    conn = connect_metadata_db(project_dir)
+    try:
+        conn.execute(
+            """
+            UPDATE uploaded_documents
+            SET original_filename = '', stored_filename = '', relative_path = ''
+            WHERE id = ?
+            """,
+            (doc_id,),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_uploaded_documents(project_dir: Path, doc_ids: list[int]) -> None:
+    if not doc_ids:
+        return
+    conn = connect_metadata_db(project_dir)
+    try:
+        conn.executemany(
+            "DELETE FROM uploaded_documents WHERE id = ?",
+            [(doc_id,) for doc_id in doc_ids],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def delete_uploaded_documents_for_rows(project_dir: Path, rows: list[dict]) -> None:
     if not rows:
         return
