@@ -62,15 +62,23 @@ def _plus_recent(enrs: list[Enregistrement]) -> Enregistrement | None:
     return ordonnes[0] if ordonnes else None
 
 
-def _dernier_par_exigence(enrs: list[Enregistrement], codes: list[str]) -> dict:
-    """Code → document le plus récent (avec fichier) qui le couvre."""
+def _dernier_par_exigence(
+    enrs: list[Enregistrement], codes: list[str], dossier_livrable: str
+) -> dict:
+    """Code → document le plus récent (avec fichier) qui le couvre.
+
+    E11 : une copie rangée dans le dossier du livrable exporté passe avant
+    celles des autres livrables (document RoHS rangé en CE et en DPE).
+    """
+    avec_fichier = [e for e in ap.plus_recents_d_abord(enrs) if e.a_un_fichier]
+    chez_soi = [e for e in avec_fichier if e.chemin_relatif.startswith(dossier_livrable + "/")]
     derniers: dict[str, Enregistrement] = {}
-    for e in ap.plus_recents_d_abord(enrs):
-        if not e.a_un_fichier:
-            continue
-        for code in codes:
-            if code not in derniers and ap.couvre(e, code):
-                derniers[code] = e
+    for code in codes:
+        for candidats in (chez_soi, avec_fichier):
+            doc = next((e for e in candidats if ap.couvre(e, code)), None)
+            if doc:
+                derniers[code] = doc
+                break
     return derniers
 
 
@@ -93,7 +101,8 @@ def _lignes_ce_dpe(projet, livrable, couples, groupes, infos) -> list:
         if mpn:
             cellules.append(("D", Cellule(mpn)))
         docs = groupes.get((f, r, livrable), [])
-        derniers = _dernier_par_exigence(docs, list(colonnes))
+        dossier_livrable = f"BDD {livrable} {projet.numero_dossier}"
+        derniers = _dernier_par_exigence(docs, list(colonnes), dossier_livrable)
         cellules += [
             ("B", Cellule(r)),
             ("C", Cellule(info.get("label", ""))),
