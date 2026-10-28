@@ -15,7 +15,7 @@
 |---|---|---|---|---|
 | 1 | **Ressources et référentiels.** Copier les 3 modèles Excel, `LOGO_Nox.ico`, `flash.png`, `eu_icon.svg` et `dpe_icon.svg` dans `ressources/` (racine du dépôt). `core/config.py` les retrouve, en développement comme dans l'exécutable. `models/referentiel.py` contient les exigences CE / DPE, l'alias RoHS, les champs et statuts CECC, les anciennes clés CECC, la correspondance exigence → colonne Excel, la liste des pays et le classement CECC. | — | R14, R19, R25 | ☑ |
 | 2 | **Thème et géométrie des fenêtres.** `ui/theme.py` (Fusion, palette claire, feuille de style, Segoe UI 10) et `ui/geometrie.py` (dimensionner et centrer sur le bon écran). | — | technique (AGENTS §4) | ☑ |
-| 3 | **Contrôles automatiques sur GitHub.** `.github/workflows/` lance `ruff`, les tests et le contrôle des couches à chaque envoi. | — | technique (décision 0002) | ☐ |
+| 3 | **Contrôles automatiques sur GitHub.** `.github/workflows/` lance `ruff`, les tests et le contrôle des couches à chaque envoi. | — | technique (décision 0002) | ☑ |
 
 Sources : 1 ← `document_rules.py`, `export_templates.py` (dictionnaires de colonnes), `upload_document_dialog.py` (`COUNTRY_ORIGIN_4A`, listes des menus CECC). 2 ← `theme.py`, `window_geometry.py`, `qt_main.py` (palette).
 Tests : 1 — chaque exigence a sa colonne, `2015/863` est un alias de `2011/65/UE`, les 5 statuts officiels. 3 — le workflow échoue sur une couche violée.
