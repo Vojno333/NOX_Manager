@@ -634,21 +634,24 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         self._signaler(erreurs)
         self._recharger_et_reselectionner(ligne)
 
-    def _remplacer_justificatif(self, ligne: LigneSuivi, code: str):
+    def _remplacer_justificatif(self, ligne: LigneSuivi, codes: list[str]):
+        """Remplace le justificatif des seules exigences sélectionnées (E6)."""
         from app.ui.dialogue_depot import DialogueDepot
 
+        alerte = corrections.message_remplacement(codes)
+        if alerte and not self._oui("Remplacer le justificatif", alerte, True):
+            return
         fenetre = DialogueDepot(
             projet=self.projet,
             livrable=ligne.livrable,
             cibles=[(ligne.fournisseur, ligne.reference)],
-            codes_coches=[code],
+            codes_coches=codes,
             parent=self,
         )
         if fenetre.exec() != QtWidgets.QDialog.Accepted:
             return
-        # Le nouveau document remplace les anciens pour toutes les exigences qu'il couvre.
         _, erreurs = corrections.remplacer_apres_depot(
-            self.projet.dossier, ligne.fournisseur, ligne.reference, fenetre.debut
+            self.projet.dossier, ligne.fournisseur, ligne.reference, fenetre.debut, codes
         )
         self._signaler(erreurs)
         self._recharger_et_reselectionner(ligne)

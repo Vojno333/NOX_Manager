@@ -42,7 +42,7 @@ class DetailPanel(QtWidgets.QFrame):
     requestModify = QtCore.Signal(object)  # LigneSuivi
     requestDelete = QtCore.Signal(object)  # LigneSuivi
     requestOpenDoc = QtCore.Signal(str)  # emits file path
-    requestReplaceJustif = QtCore.Signal(object, str)  # LigneSuivi, code
+    requestReplaceJustif = QtCore.Signal(object, list)  # LigneSuivi, codes sélectionnés
     requestDeleteJustif = QtCore.Signal(object, str)  # LigneSuivi, code
 
     _CODE_ROLE = Qt.UserRole + 1
@@ -202,7 +202,9 @@ class DetailPanel(QtWidgets.QFrame):
         t.setShowGrid(False)
         t.setAlternatingRowColors(True)
         t.setEditTriggers(QtWidgets.QTableWidget.NoEditTriggers)
-        t.setSelectionMode(QtWidgets.QTableWidget.NoSelection)
+        # E6 : on sélectionne une ou plusieurs exigences avant « Remplacer ».
+        t.setSelectionMode(QtWidgets.QTableWidget.ExtendedSelection)
+        t.setSelectionBehavior(QtWidgets.QTableWidget.SelectRows)
         t.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         t.setMinimumHeight(300)
         t.setStyleSheet(f"""
@@ -396,6 +398,7 @@ class DetailPanel(QtWidgets.QFrame):
         code = str(item.data(self._CODE_ROLE) or "")
         if not code:
             return
+        codes = self.codes_selectionnes(index.row())
 
         menu = QtWidgets.QMenu(self._tbl_docs)
         # Fond explicite : sinon le menu hérite du « background:transparent »
@@ -421,8 +424,11 @@ class DetailPanel(QtWidgets.QFrame):
         act_open = menu.addAction("Ouvrir le document")
         act_open.setEnabled(bool(path))
         act_open.triggered.connect(lambda: self.requestOpenDoc.emit(path))
-        menu.addAction("Remplacer le justificatif…").triggered.connect(
-            lambda: self.requestReplaceJustif.emit(row_data, code)
+        libelle = "Remplacer le justificatif…"
+        if len(codes) > 1:
+            libelle = f"Remplacer le justificatif ({len(codes)} exigences)…"
+        menu.addAction(libelle).triggered.connect(
+            lambda: self.requestReplaceJustif.emit(row_data, codes)
         )
         menu.addSeparator()
 
@@ -450,6 +456,20 @@ class DetailPanel(QtWidgets.QFrame):
         delete_lbl.mouseReleaseEvent = _on_delete_clicked
 
         menu.exec(self._tbl_docs.viewport().mapToGlobal(pos))
+
+    def codes_selectionnes(self, ligne_cliquee: int) -> list[str]:
+        """Codes des exigences sélectionnées ; la ligne cliquée seule si elle
+        n'est pas dans la sélection (E6)."""
+        lignes = sorted({i.row() for i in self._tbl_docs.selectionModel().selectedRows()})
+        if ligne_cliquee not in lignes:
+            lignes = [ligne_cliquee]
+        codes = []
+        for ligne in lignes:
+            item = self._tbl_docs.item(ligne, 2)
+            code = str(item.data(self._CODE_ROLE) or "") if item else ""
+            if code:
+                codes.append(code)
+        return codes
 
     def _on_modify(self):
         if self._row_data:

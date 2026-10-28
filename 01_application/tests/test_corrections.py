@@ -52,25 +52,50 @@ def test_s19_r21_retirer_rohs_retire_des_deux_cotes(projet_essai):
     assert not (projet_essai / "BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").exists()
 
 
-def test_s20_r22_remplacer_le_justificatif(projet_essai, tmp_path):
+def _remplacer(projet, tmp_path, coches, selection):
     debut = datetime.now().isoformat()
     nouveau = tmp_path / "nouveau.pdf"
     nouveau.write_bytes(b"%PDF")
     etats = {c: ap.APPLICABLE for c, _ in EXIGENCES_CE}
     saisie = SaisieDepot(
-        projet_essai,
-        "CE",
-        [("ACME", "REF-001")],
-        fichier=nouveau,
-        etats=etats,
-        coches={"2006/42/UE", "2014/30/UE"},
+        projet, "CE", [("ACME", "REF-001")], fichier=nouveau, etats=etats, coches=set(coches)
     )
     depot.enregistrer(saisie)
-    supprimes, _ = corrections.remplacer_apres_depot(projet_essai, "ACME", "REF-001", debut)
+    return corrections.remplacer_apres_depot(projet, "ACME", "REF-001", debut, selection), debut
+
+
+def _ancien_acme(projet, debut):
+    anciens = [e for e in base_projet.lire_tous(projet) if e.depose_le < debut]
+    return next(e for e in anciens if e.reference == "REF-001")
+
+
+def test_e6_remplacement_limite_a_l_exigence_selectionnee(projet_essai, tmp_path):
+    # Nouveau document couvrant Machine et CEM, remplacement demandé pour Machine seule.
+    (supprimes, _), debut = _remplacer(
+        projet_essai, tmp_path, {"2006/42/UE", "2014/30/UE"}, ["2006/42/UE"]
+    )
+    assert supprimes == []
+    ancien = _ancien_acme(projet_essai, debut)
+    assert ancien.codes_couverts == ["2014/30/UE"] and ancien.a_un_fichier
+    assert (projet_essai / CE_ACME).is_file()
+
+
+def test_e6_plusieurs_exigences_selectionnees(projet_essai, tmp_path):
+    selection = ["2006/42/UE", "2014/30/UE"]
+    assert corrections.message_remplacement(selection).startswith(
+        "Le nouveau document remplacera l'ancien pour les 2 exigences sélectionnées"
+    )
+    assert corrections.message_remplacement(["2006/42/UE"]) is None
+    (supprimes, _), debut = _remplacer(projet_essai, tmp_path, set(selection), selection)
     assert supprimes == ["CE_ACME_REF-001.pdf"]
-    anciens = [e for e in base_projet.lire_tous(projet_essai) if e.depose_le < debut]
-    acme = [e for e in anciens if e.reference == "REF-001"]
-    assert acme[0].codes_couverts == [] and not acme[0].a_un_fichier
+    assert not _ancien_acme(projet_essai, debut).a_un_fichier
+
+
+def test_e6_exigence_selectionnee_mais_non_couverte_par_le_nouveau(projet_essai, tmp_path):
+    (supprimes, _), debut = _remplacer(projet_essai, tmp_path, {"2006/42/UE"}, ["2014/30/UE"])
+    assert supprimes == []
+    ancien = _ancien_acme(projet_essai, debut)
+    assert ancien.codes_couverts == ["2006/42/UE", "2014/30/UE"]
 
 
 def test_s21_r23_vider_un_article_pour_le_ce(projet_essai):

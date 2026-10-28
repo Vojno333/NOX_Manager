@@ -78,3 +78,16 @@ def test_s21_r23_vider_depuis_le_panneau(app, projet_essai, oui):
     assert oui[0][0] == "Supprimer la référence"
     assert not (projet_essai / "BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").exists()
     assert _ligne(fenetre, "BETA", "REF-010", "DPE").completion_texte == "50 %"
+
+
+def test_e6_selection_de_plusieurs_exigences(app, projet_essai):
+    fenetre = FenetreSuivi(projet_fichier.lire_projet(projet_essai))
+    fenetre._sur_ligne_selectionnee(_ligne(fenetre, "ACME", "REF-001", "CE"))
+    table = fenetre.detail_panel._tbl_docs
+    assert fenetre.detail_panel.codes_selectionnes(0) == ["2006/42/UE"]
+    table.selectRow(0)
+    mode = table.selectionModel().SelectionFlag
+    table.selectionModel().select(table.model().index(4, 0), mode.Select | mode.Rows)
+    assert fenetre.detail_panel.codes_selectionnes(4) == ["2006/42/UE", "2014/30/UE"]
+    # Ligne cliquée hors sélection : elle seule.
+    assert fenetre.detail_panel.codes_selectionnes(2) == ["2011/65/UE"]
