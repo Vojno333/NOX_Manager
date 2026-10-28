@@ -91,5 +91,26 @@ def test_e11_chaque_export_pointe_vers_son_dossier(projet_essai):
     exports = {c.name: relever(c, projet_essai) for c, _ in export.exporter(projet_essai)}
     lien_ce = exports["BDD_CE_N999.xlsx"]["cellules"]["J7"]["lien"]
     lien_dpe = exports["BDD_DPE_N999.xlsx"]["cellules"]["H7"]["lien"]
-    assert lien_ce == "<PROJET>/BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
-    assert lien_dpe == "<PROJET>/BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+    # Liens relatifs à l'export (E13) : chacun vise la copie de son propre dossier.
+    assert lien_ce == lien_dpe == "Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+
+
+def test_e13_liens_relatifs_valables_apres_deplacement(projet_essai, tmp_path):
+    import shutil
+
+    export.exporter(projet_essai)
+    deplace = tmp_path / "ailleurs" / "projet renommé"
+    shutil.move(str(projet_essai), str(deplace))
+    ce = deplace / "BDD CE N999" / "BDD_CE_N999.xlsx"
+    ws = load_workbook(ce).worksheets[0]
+    cible = ws["H5"].hyperlink.target
+    assert not cible.startswith(("<", "/")) and ":" not in cible
+    assert (ce.parent / cible).is_file()
+
+
+def test_e13_liens_de_l_export_archive_toujours_valables(projet_essai):
+    export.exporter(projet_essai)
+    (_, archive), *_ = export.exporter(projet_essai)
+    cible = load_workbook(archive).worksheets[0]["H5"].hyperlink.target
+    assert cible.startswith("../Documents/")
+    assert (archive.parent / cible).resolve().is_file()

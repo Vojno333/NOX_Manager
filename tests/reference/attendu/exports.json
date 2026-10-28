@@ -61,14 +61,14 @@
       },
       "H5": {
         "valeur": "CE_ACME_REF-001.pdf",
-        "lien": "<PROJET>/BDD CE N999/Documents/ACME/REF-001/CE_ACME_REF-001.pdf"
+        "lien": "Documents/ACME/REF-001/CE_ACME_REF-001.pdf"
       },
       "I5": {
         "valeur": "N/A"
       },
       "L5": {
         "valeur": "CE_ACME_REF-001.pdf",
-        "lien": "<PROJET>/BDD CE N999/Documents/ACME/REF-001/CE_ACME_REF-001.pdf"
+        "lien": "Documents/ACME/REF-001/CE_ACME_REF-001.pdf"
       },
       "M5": {
         "valeur": "N/A"
@@ -90,7 +90,7 @@
       },
       "H6": {
         "valeur": "CE_ACME_REF-002_estimation.pdf",
-        "lien": "<PROJET>/BDD CE N999/Documents/ACME/REF-002/CE_ACME_REF-002_estimation.pdf"
+        "lien": "Documents/ACME/REF-002/CE_ACME_REF-002_estimation.pdf"
       },
       "J6": {
         "valeur": "N/A"
@@ -121,11 +121,11 @@
       },
       "J7": {
         "valeur": "DPE_BETA_REF-010.pdf",
-        "lien": "<PROJET>/BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+        "lien": "Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
       },
       "K7": {
         "valeur": "DPE_BETA_REF-010.pdf",
-        "lien": "<PROJET>/BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+        "lien": "Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
       },
       "B8": {
         "valeur": "REF-030"
@@ -362,7 +362,7 @@
       },
       "K7": {
         "valeur": "CECC BETA",
-        "lien": "<PROJET>/BDD CECC N999/Documents/BETA/REF-010/CECC_BETA_REF-010 (1).pdf"
+        "lien": "Documents/BETA/REF-010/CECC_BETA_REF-010 (1).pdf"
       },
       "P7": {
         "valeur": "FR-France"
@@ -402,7 +402,7 @@
       },
       "K9": {
         "valeur": "CECC EPS",
-        "lien": "<PROJET>/BDD CECC N999/Documents/EPS/REF-040/CECC_EPS_REF-040.pdf"
+        "lien": "Documents/EPS/REF-040/CECC_EPS_REF-040.pdf"
       },
       "B10": {
         "valeur": "REF-020"
@@ -433,7 +433,7 @@
       },
       "K10": {
         "valeur": "Déclaration GAMMA",
-        "lien": "<PROJET>/BDD CECC N999/Documents/GAMMA/REF-020/CECC_GAMMA_REF-020 (1).pdf"
+        "lien": "Documents/GAMMA/REF-020/CECC_GAMMA_REF-020 (1).pdf"
       },
       "L10": {
         "valeur": "DU"
@@ -571,7 +571,7 @@
       },
       "H7": {
         "valeur": "DPE_BETA_REF-010.pdf",
-        "lien": "<PROJET>/BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+        "lien": "Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
       },
       "I7": {
         "valeur": "N/A"
