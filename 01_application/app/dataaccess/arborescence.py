@@ -33,15 +33,47 @@ def dossier_livrable(dossier_projet: Path, livrable: str, numero_dossier: str) -
 
 
 def dossier_documents(
-    dossier_projet: Path, livrable: str, numero_dossier: str, fournisseur: str, reference: str
+    dossier_projet: Path,
+    livrable: str,
+    numero_dossier: str,
+    fournisseur: str,
+    reference: str,
+    sous_dossier: str = "",
 ) -> Path:
-    """Dossier où sont rangés les documents d'un article.
+    """Dossier où sont rangés les documents d'un article (et de sa ligne, E1).
 
     Comme l'ancienne application, les noms saisis sont utilisés tels quels
     ici, alors que la création de la structure les nettoie (`nom_sur`).
     """
     docs = dossier_livrable(dossier_projet, livrable, numero_dossier) / "Documents"
-    return docs / fournisseur / reference
+    dossier = docs / fournisseur / reference
+    return dossier / sous_dossier if sous_dossier else dossier
+
+
+def sous_dossiers(articles) -> list[str]:
+    """Sous-dossier de chaque ligne, dans l'ordre (E1, décision 0005).
+
+    Article sur une seule ligne : aucun. À partir de deux lignes : le n° de
+    commande, avec un suffixe `_1`, `_2`… si plusieurs lignes de l'article ont
+    le même n° de commande ou n'en ont pas.
+    """
+    articles = list(articles)
+    par_couple: dict[tuple[str, str], list[int]] = {}
+    for i, a in enumerate(articles):
+        par_couple.setdefault((a.fournisseur, a.reference), []).append(i)
+    noms = [""] * len(articles)
+    for indices in par_couple.values():
+        if len(indices) < 2:
+            continue
+        bases = [nom_sur(articles[i].n_commande) for i in indices]
+        vus: dict[str, int] = {}
+        for i, base in zip(indices, bases, strict=True):
+            if base and bases.count(base) == 1:
+                noms[i] = base
+            else:
+                vus[base] = vus.get(base, 0) + 1
+                noms[i] = f"{base}_{vus[base]}"
+    return noms
 
 
 def nom_export(livrable: str, numero_dossier: str) -> str:
@@ -65,11 +97,14 @@ def creer_structure(
         excel = racine / nom_export(livrable, numero_dossier)
         if not excel.exists():
             excel.touch()
-        for fournisseur, reference in articles:
+        for fournisseur, reference, *sous in articles:
             f, r = nom_sur(fournisseur), nom_sur(reference)
             if not f:
                 continue
-            (docs / f / r if r else docs / f).mkdir(parents=True, exist_ok=True)
+            cible = docs / f / r if r else docs / f
+            if r and sous and sous[0]:
+                cible = cible / sous[0]
+            cible.mkdir(parents=True, exist_ok=True)
 
 
 def chemin_libre(dossier: Path, nom: str) -> Path:
@@ -225,3 +260,8 @@ def fichiers_presents(dossier_projet: Path) -> set[str]:
             except OSError:
                 continue
     return presents
+
+
+def supprimer_dossier(dossier: Path) -> None:
+    if dossier.exists():
+        shutil.rmtree(dossier, ignore_errors=True)

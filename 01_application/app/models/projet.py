@@ -6,6 +6,7 @@ Repris de `v1-avant-refonte:wikidocs_qt/project_manager.py` (`_normalize_rows`,
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -21,10 +22,16 @@ class Article:
     libelle: str = ""
     mnp: str = ""
     n_commande: str = ""
+    id_ligne: str = ""  # E1 : identifiant stable de la ligne (lignes multiples activées)
 
     @property
     def cle(self) -> tuple[str, str]:
         return (self.fournisseur, self.reference)
+
+    @property
+    def contenu(self) -> tuple[str, str, str, str, str]:
+        """La ligne entière : ce qui doit être unique quand les lignes multiples sont activées."""
+        return (self.fournisseur, self.reference, self.libelle, self.mnp, self.n_commande)
 
     def vers_dict(self) -> dict:
         """Forme enregistrée dans `project.json` → `rows`."""
@@ -34,7 +41,7 @@ class Article:
             "label": self.libelle,
             "mnp": self.mnp,
             "order_number": self.n_commande,
-        }
+        } | ({"line_id": self.id_ligne} if self.id_ligne else {})
 
     @classmethod
     def depuis_ligne(cls, ligne) -> Article:
@@ -46,20 +53,28 @@ class Article:
                 libelle=str(ligne.get("label", "")).strip(),
                 mnp=str(ligne.get("mnp", "")).strip(),
                 n_commande=str(ligne.get("order_number", "")).strip(),
+                id_ligne=str(ligne.get("line_id", "") or "").strip(),
             )
         return cls(fournisseur=str(ligne[0]).strip(), reference=str(ligne[1]).strip())
 
 
-def normaliser_articles(lignes) -> list[Article]:
-    """Articles sans fournisseur ou sans référence retirés ; en cas de doublon
-    fournisseur / référence, la première ligne gagne (R3)."""
+def normaliser_articles(lignes, multiples: bool = False) -> list[Article]:
+    """Articles sans fournisseur ou sans référence retirés.
+
+    Sans lignes multiples : en cas de doublon fournisseur / référence, la première
+    ligne gagne (R3). Avec (E1, décision 0005) : seules les lignes strictement
+    identiques sont fusionnées, et chaque ligne reçoit un identifiant stable.
+    """
     articles: list[Article] = []
-    vus: set[tuple[str, str]] = set()
+    vus: set[tuple] = set()
     for ligne in lignes or []:
         article = ligne if isinstance(ligne, Article) else Article.depuis_ligne(ligne)
-        if not article.fournisseur or not article.reference or article.cle in vus:
+        cle = article.contenu if multiples else article.cle
+        if not article.fournisseur or not article.reference or cle in vus:
             continue
-        vus.add(article.cle)
+        vus.add(cle)
+        if multiples and not article.id_ligne:
+            article.id_ligne = uuid.uuid4().hex[:8]
         articles.append(article)
     return articles
 
@@ -91,4 +106,9 @@ class Projet:
         return self.dossier / f"BDD {livrable} {self.numero_dossier}"
 
     def article(self, fournisseur: str, reference: str) -> Article | None:
+        """Première ligne de l'article."""
         return next((a for a in self.articles if a.cle == (fournisseur, reference)), None)
+
+    def lignes_de(self, fournisseur: str, reference: str) -> list[Article]:
+        """Toutes les lignes de l'article, dans l'ordre du projet (E1)."""
+        return [a for a in self.articles if a.cle == (fournisseur, reference)]

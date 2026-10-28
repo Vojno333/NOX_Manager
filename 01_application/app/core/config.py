@@ -33,3 +33,8 @@ def ressource(nom: str) -> Path:
 @lru_cache
 def reglages() -> dict:
     return json.loads((racine_ressources() / "config.json").read_text("utf-8"))
+
+
+def lignes_multiples() -> bool:
+    """E1 activée : un même article peut figurer sur plusieurs lignes (décision 0005)."""
+    return bool(reglages().get("lignes_multiples", False))

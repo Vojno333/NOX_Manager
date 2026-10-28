@@ -10,6 +10,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from app.core.config import lignes_multiples
 from app.models.projet import Article, Projet, normaliser_articles, normaliser_livrables
 
 DOSSIER_CACHE = ".nox"
@@ -49,7 +50,7 @@ def _vers_projet(dossier: Path, brut: dict) -> Projet:
     donnees = dict(brut)
     donnees.setdefault("project_path", str(dossier.resolve()))
     donnees.setdefault("project_file_version", VERSION_FICHIER)
-    articles = normaliser_articles(lignes)
+    articles = normaliser_articles(lignes, lignes_multiples())
     livrables = normaliser_livrables(brut.get("enabled_bdds"))
     donnees["rows"] = [a.vers_dict() for a in articles]
     donnees["enabled_bdds"] = livrables
@@ -96,7 +97,7 @@ def creer_fichier_projet(
             "updated_at": maintenant,
             "project_meta_dir": DOSSIER_CACHE,
             "project_file_version": VERSION_FICHIER,
-            "rows": [a.vers_dict() for a in normaliser_articles(articles)],
+            "rows": [a.vers_dict() for a in normaliser_articles(articles, lignes_multiples())],
             "enabled_bdds": normaliser_livrables(livrables),
         },
     )
@@ -119,7 +120,9 @@ def enregistrer_projet(projet: Projet) -> Projet:
             "project_name": projet.nom,
             "dossier_number": projet.numero_dossier,
             "date_code": projet.date_code,
-            "rows": [a.vers_dict() for a in normaliser_articles(projet.articles)],
+            "rows": [
+                a.vers_dict() for a in normaliser_articles(projet.articles, lignes_multiples())
+            ],
             "enabled_bdds": normaliser_livrables(projet.livrables),
             "project_path": str(projet.dossier.resolve()),
             "updated_at": datetime.now().isoformat(),
