@@ -204,3 +204,21 @@ def supprimer_definitivement(dossier: Path, etat: EtatUtilisateur) -> None:
     """Efface le dossier entier du projet, puis le retire des récents (R29)."""
     arborescence.supprimer_projet(dossier)
     etat.retirer_projet_recent(dossier)
+
+
+def lire_projet(dossier: Path) -> Projet | None:
+    """Projet du dossier, sans le faire entrer dans les récents."""
+    return projet_fichier.lire_projet(dossier) if dossier.exists() else None
+
+
+def statistiques_disque(dossier: Path) -> tuple[int, int]:
+    """(nombre de documents, taille du projet).
+
+    Long sur le partage réseau : à appeler hors du fil de l'interface.
+    """
+    return arborescence.statistiques_disque(dossier)
+
+
+def etat_utilisateur() -> EtatUtilisateur:
+    """Préférences de l'utilisateur courant (projets récents, emplacements)."""
+    return EtatUtilisateur()

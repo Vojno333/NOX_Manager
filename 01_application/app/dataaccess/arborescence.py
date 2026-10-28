@@ -7,6 +7,7 @@ Repris de `00_ancien/wikidocs_qt/project_structure.py`,
 
 from __future__ import annotations
 
+import os
 import shutil
 from collections.abc import Iterable
 from pathlib import Path
@@ -158,3 +159,31 @@ def couples_des_dossiers(
         if couples:
             break
     return couples
+
+
+def statistiques_disque(dossier_projet: Path) -> tuple[int, int]:
+    """(nombre de fichiers sous un dossier « Documents », taille totale en octets).
+
+    `os.scandir` plutôt que `rglob` + `stat` : sous Windows, taille et type
+    arrivent avec la liste du dossier (décisif sur un partage réseau). À
+    appeler hors du fil de l'interface.
+    """
+    nb_documents = 0
+    taille = 0
+    pile: list[tuple[str, bool]] = [(str(dossier_projet), False)]
+    while pile:
+        dossier, dans_documents = pile.pop()
+        try:
+            with os.scandir(dossier) as entrees:
+                for entree in entrees:
+                    try:
+                        if entree.is_dir(follow_symlinks=False):
+                            pile.append((entree.path, dans_documents or entree.name == "Documents"))
+                        elif entree.is_file(follow_symlinks=False):
+                            taille += entree.stat(follow_symlinks=False).st_size
+                            nb_documents += dans_documents
+                    except OSError:
+                        continue
+        except OSError:
+            continue
+    return nb_documents, taille

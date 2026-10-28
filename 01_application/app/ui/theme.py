@@ -233,3 +233,243 @@ def appliquer_theme(app: QtWidgets.QApplication) -> None:
     app.setStyleSheet(FEUILLE_DE_STYLE)
     if sys.platform.startswith("win"):
         QtWidgets.QApplication.setFont(QtGui.QFont("Segoe UI", 10))
+
+
+# Feuille de style propre à l'écran d'accueil (`00_ancien/wikidocs_qt/home_window.py`).
+STYLE_ACCUEIL = """
+/* ── Global ── */
+QMainWindow, QWidget#centralWidget {
+    background-color: #f0f2f5;
+}
+QWidget {
+    font-family: "Segoe UI", "IBM Plex Sans", Arial, sans-serif;
+    font-size: 13px;
+    color: #1a1d23;
+}
+
+/* ── Hero header ── */
+QFrame#heroFrame {
+    background: #ffffff;
+    border: 1px solid #e2e5ea;
+    border-radius: 0px;
+}
+QLabel#heroTitle {
+    font-size: 22px;
+    font-weight: 700;
+    color: #1a1d23;
+    letter-spacing: -0.5px;
+}
+QLabel#heroSubtitle {
+    font-size: 12px;
+    color: #6b7280;
+}
+QLabel#versionLabel {
+    font-size: 12px;
+    color: #6b7280;
+}
+QPushButton#userButton {
+    font-size: 13px;
+    color: #374151;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 5px 14px 5px 8px;
+    text-align: left;
+}
+QPushButton#userButton:hover {
+    background: #e9ebee;
+}
+
+/* ── Action buttons ── */
+QPushButton#primaryButton {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 20px;
+    min-height: 42px;
+}
+QPushButton#primaryButton:hover  { background: #1d4ed8; }
+QPushButton#primaryButton:pressed { background: #1e40af; }
+
+QPushButton#outlineButton {
+    background: #ffffff;
+    color: #374151;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 20px;
+    min-height: 42px;
+}
+QPushButton#outlineButton:hover  { background: #f9fafb; border-color: #9ca3af; }
+QPushButton#outlineButton:pressed { background: #f3f4f6; }
+
+QPushButton#ghostButton {
+    background: #ffffff;
+    color: #374151;
+    border: 1.5px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 16px;
+    min-height: 36px;
+}
+QPushButton#ghostButton:hover  { background: #f9fafb; }
+
+QPushButton#dangerButton {
+    background: #ffffff;
+    color: #dc2626;
+    border: 1.5px solid #fecaca;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 0 16px;
+    min-height: 36px;
+}
+QPushButton#dangerButton:hover  { background: #fff5f5; }
+
+QPushButton#openFooterButton {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 16px;
+    min-height: 36px;
+}
+QPushButton#openFooterButton:hover  { background: #1d4ed8; }
+
+/* ── Panels ── */
+QFrame#panelLeft, QFrame#panelRight {
+    background: #ffffff;
+    border: 1px solid #e2e5ea;
+    border-radius: 12px;
+}
+QLabel#panelTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1d23;
+}
+
+/* ── Search box ── */
+QLineEdit#searchBox {
+    background: #f9fafb;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 4px 10px 4px 32px;
+    font-size: 13px;
+    color: #374151;
+    min-width: 220px;
+    min-height: 32px;
+}
+QLineEdit#searchBox:focus {
+    border-color: #2563eb;
+    background: #ffffff;
+}
+
+/* ── Tree widget (project table) ── */
+QTreeWidget#projectTree {
+    background: #ffffff;
+    border: none;
+    border-top: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    outline: none;
+    alternate-background-color: #f9fafb;
+}
+QTreeWidget#projectTree::item {
+    padding: 10px 4px;
+    border-bottom: 1px solid #f3f4f6;
+}
+QTreeWidget#projectTree::item:selected {
+    background: #eff6ff;
+    color: #1a1d23;
+}
+QTreeWidget#projectTree::item:hover:!selected {
+    background: #f0f6ff;
+}
+QHeaderView::section {
+    background: #f9fafb;
+    border: none;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 8px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+QHeaderView::section:first { border-radius: 0; }
+
+/* ── Hint label ── */
+QLabel#hintLabel {
+    font-size: 12px;
+    color: #9ca3af;
+    padding: 8px 16px;
+}
+
+/* ── Footer status ── */
+QLabel#footerStatus {
+    font-size: 12px;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+/* ── Separator ── */
+QFrame#hLine {
+    background: #e5e7eb;
+    max-height: 1px;
+    border: none;
+}
+
+/* ── Info panel right ── */
+QLabel#infoPanelTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1d23;
+    padding: 16px 20px 14px;
+    border-bottom: 1px solid #e5e7eb;
+}
+QLabel#infoPlaceholderTitle {
+    font-size: 14px;
+    font-weight: 600;
+    color: #374151;
+}
+QLabel#infoPlaceholderSub {
+    font-size: 12px;
+    color: #9ca3af;
+}
+QLabel#infoKey {
+    font-size: 13px;
+    color: #6b7280;
+    font-weight: 500;
+}
+QLabel#infoValue {
+    font-size: 13px;
+    color: #1a1d23;
+}
+
+/* ── Status bar ── */
+QLabel#statusBar {
+    font-size: 12px;
+    color: #6b7280;
+    padding: 8px 0px;
+}
+
+/* ── Scrollbar ── */
+QScrollBar:vertical {
+    background: transparent;
+    width: 8px;
+    margin: 0;
+}
+QScrollBar::handle:vertical {
+    background: #d1d5db;
+    border-radius: 4px;
+    min-height: 30px;
+}
+QScrollBar::handle:vertical:hover { background: #9ca3af; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
+"""
