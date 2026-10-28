@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (prochaine tâche : 21)
+- Étape en cours : R8 — Réaliser (prochaine tâche : 22)
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
@@ -17,12 +17,27 @@
 
 - R7 Liste des tâches — `docs/travaux.md` (validée le 2026-10-28) : 23 tâches de reconstruction en 10 vagues (dernière : supprimer `00_ancien/`), puis 15 tâches d'évolution (E1 en deux temps) en 6 vagues. Toutes les règles R1–R31 et E1–E14 couvertes.
 
-- R8 en cours — tâche 1 (ressources et référentiels) faite : `ressources/`, `core/config.ressource()`, `models/referentiel.py`.
-- Tâche 2 (thème et géométrie) faite : `ui/theme.py` (feuille de style identique à l'ancienne), `ui/geometrie.py`.
-- Tâche 3 (contrôles automatiques) faite : `.github/workflows/controles.yml` (Windows, Python 3.14 : mise en forme, lint, tests, couches). Vague 1 terminée.
+- R8 en cours — vagues 1 à 7 faites (tâches 1 à 21), chacune sur sa branche, fusionnée dans `develop` :
+  - socle (1–3) : ressources, référentiels, thème, géométrie, contrôles GitHub ;
+  - données (4–7) : `project.json`, base SQLite, préférences, dossiers et fichiers ;
+  - règles (8–13) : applicabilité, projets, complétion et indicateurs, export Excel, dépôt, corrections ;
+  - écrans (14, 15, 17–20) : accueil, dialogue de projet, composants et dialogue de dépôt, tableau de suivi, panneau de détail ;
+  - référence automatisée (16) : tableau, exports et arborescence identiques à `attendu/`, y compris sur une copie du projet écrit par l'ancienne application ;
+  - assemblage et fabrication (21) : `main.py` relie les écrans, `NOX_Manager.spec` versionné, `uv run build` → `dist/NOX_Manager/` (≈ 120 Mo, démarre), `docs/livraison.md`.
+  - 111 tests, lint et couches au vert.
 
 ## Reste à faire
-- R8 Réaliser, une tâche à la fois : vague 2 (tâches 4, 5, 6, 7)
+- Tâche 22 — recette avec l'utilisateur : jouer S1 à S27 sur l'exécutable, sur une copie de `projet_essai` et sur une copie d'un vrai projet du partage ; consigner les écarts.
+- Tâche 23 — supprimer `00_ancien/` (seulement si la recette est sans écart).
+- Tâches 24 à 38 — évolutions (après la tâche 23).
+
+## Écarts et constats relevés pendant la reconstruction (à valider en recette)
+- **R7, fichier glissé-déposé** : l'ancienne application ne contrôlait le format que dans le sélecteur de fichier ; un fichier glissé passait sans contrôle. Le contrôle est maintenant fait aussi au dépôt (R7 et AGENTS §7).
+- **Projet déplacé ou copié** : l'ancienne application travaillait dans le dossier inscrit dans `project.json` (`project_path`), même si le projet avait été ouvert depuis un autre dossier. La nouvelle travaille dans le dossier réellement ouvert (indispensable pour la référence sur une copie).
+- **Ouvrir un dossier qui n'est pas un projet** : l'ancienne application y créait un dossier `.nox` vide ; la nouvelle ne crée rien.
+- **Vider une référence** : une erreur de suppression sur la copie RoHS réduite est regroupée dans le message « Suppression incomplète » au lieu d'un message séparé.
+- **Exécutable** : n'embarque plus les sources `.py` en clair ni `python-docx` (inutile, constat C3).
+- Comportements repris à l'identique, candidats à une évolution : après un changement des livrables suivis dans le paramétrage, les onglets du tableau ne sont mis à jour qu'à la réouverture ; au premier affichage, le tableau est trié par fournisseur décroissant.
 
 ## Angles morts signalés en R7
 - E1 suppose un changement du format des données (identifiant de ligne) : décision à écrire avant la tâche 37.
@@ -36,8 +51,8 @@
 - Commits autorisés le 2026-10-28. Étiquette `v1-avant-refonte` posée sur d7f13be, reprise commitée sur `develop` (`uv.lock` versionné). Chaque tâche est fusionnée localement dans `develop` (choix de l'utilisateur) ; rien n'est poussé sur GitHub.
 - Liste des pays (menu CECC) : Algérie, Belgique et Chine y figurent deux fois. Reprise à l'identique ; à proposer en évolution.
 - Faire remonter au responsable de la méthode le besoin d'une option « application de bureau » dans le catalogue (décision 0002).
-- Contrôles automatiques : le workflow GitHub ne tournera qu'au premier envoi sur GitHub (rien n'est poussé pour l'instant). La référence y sera branchée par la tâche 16.
-- Emplacement de diffusion de l'exécutable : à documenter.
+- Contrôles automatiques : le workflow GitHub ne tournera qu'au premier envoi sur GitHub (rien n'est poussé pour l'instant). La référence (projet reconstruit) y est jouée avec les tests.
+- Emplacement de diffusion de l'exécutable : à documenter (`docs/livraison.md`, étape 5).
 
 ## Pistes V2
 - Construction et envoi des mails de relance fournisseurs. À requalifier : un envoi en masse sans personne devant l'écran ferait passer en P4.
