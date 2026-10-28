@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (évolutions ; en attente : tâches 24, 32, 37, 38)
+- Étape en cours : R8 — Réaliser (reste E1 : tâches 37 et 38)
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
@@ -28,11 +28,9 @@
 - Tâche 22 (recette) faite le 2026-10-28 avec l'utilisateur, version allégée (`docs/recette.md`) : tout conforme, vrai projet compris (`tests/reference/comparer_projet.py`, joué par l'utilisateur, projet confidentiel). Un écart, M3 / S21, fidèle à l'ancienne application, refusé par l'utilisateur → E7 (gardée à sa place, après la tâche 23).
 - Tâche 23 faite le 2026-10-28 (accord de l'utilisateur) : `00_ancien/` supprimé, ancien code conservé sous l'étiquette `v1-avant-refonte` ; `AGENTS.md`, `README.md` et les docstrings y renvoient. **Reconstruction terminée.**
 
-- Évolutions faites le 2026-10-28 (une branche et un commit par tâche, référence `attendu/` mise à jour dans la tâche) : E5 (25), E8 (26), E2 (27), E6 (28), E9 (29), E3 (30), E7 (31, corrige l'écart M3 de la recette), E11 (33), E4 (34), E13 (35), E10 (36). 121 tests au vert.
+- Évolutions faites le 2026-10-28 (une branche et un commit par tâche, référence `attendu/` mise à jour dans la tâche) : E5 (25), E8 (26), E2 (27), E6 (28), E9 (29), E3 (30), E7 (31, corrige l'écart M3 de la recette), E11 (33), E4 (34), E13 (35), E10 (36), E14 (24, décision 0004 : lecture seule stricte), E12 (32). 129 tests au vert.
 
 ## Reste à faire
-- Tâche 24 — E14 (protection contre les enregistrements simultanés) : modalité à décider avec l'utilisateur.
-- Tâche 32 — E12 (fichier disparu signalé) : dépend de la tâche 24.
 - Tâches 37 et 38 — E1 (lignes multiples d'un même article) : décision sur le format des données à écrire d'abord.
 
 ## Écarts et constats relevés pendant la reconstruction (à valider en recette)
