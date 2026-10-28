@@ -129,7 +129,9 @@ def indicateurs(lignes: list[LigneSuivi]) -> dict[str, int]:
 
 
 # ── Détail d'une ligne (panneau de droite) ──
-def lignes_de_detail(ligne: LigneSuivi, dossier: Path) -> list[dict]:
+def lignes_de_detail(
+    ligne: LigneSuivi, dossier: Path, introuvables: set[str] | None = None
+) -> list[dict]:
     """Une ligne par exigence (CE / DPE) ou par champ de fiche (CECC).
 
     CE / DPE : code, « code | libellé », applicabilité, document le plus récent
@@ -153,6 +155,7 @@ def lignes_de_detail(ligne: LigneSuivi, dossier: Path) -> list[dict]:
                 derniers[code_normal] = {
                     "filename": e.nom_stocke,
                     "path": str(dossier / e.chemin_relatif),
+                    "introuvable": e.chemin_relatif in (introuvables or set()),
                 }
     detail = []
     for code, libelle in attendues:
@@ -172,6 +175,7 @@ def lignes_de_detail(ligne: LigneSuivi, dossier: Path) -> list[dict]:
                 "applicability": applicabilite,
                 "filename": "" if na or not doc else doc["filename"],
                 "path": "" if na or not doc else doc["path"],
+                "introuvable": bool(doc and not na and doc["introuvable"]),
             }
         )
     return detail
@@ -189,3 +193,22 @@ def _detail_cecc(enrs: list[Enregistrement], dossier: Path) -> list[dict]:
         }
         for cle, libelle, _ in CHAMPS_CECC
     ]
+
+
+# ── Fichiers disparus (E12) ──
+def documents_introuvables(projet: Projet, enrs: list[Enregistrement] | None = None) -> set[str]:
+    """Chemins enregistrés dont le fichier n'est plus sur le disque.
+
+    Parcourt les dossiers du projet : long sur le partage, à appeler hors du fil
+    de l'interface.
+    """
+    if enrs is None:
+        enrs = base_projet.lire_tous(projet.dossier)
+    presents = arborescence.fichiers_presents(projet.dossier)
+    return {e.chemin_relatif for e in enrs if e.a_un_fichier and e.chemin_relatif not in presents}
+
+
+def nb_introuvables(ligne: LigneSuivi, introuvables: set[str]) -> int:
+    return len(
+        {e.chemin_relatif for e in ligne.enregistrements if e.chemin_relatif in introuvables}
+    )

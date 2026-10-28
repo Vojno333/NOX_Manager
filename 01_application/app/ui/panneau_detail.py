@@ -318,6 +318,10 @@ class DetailPanel(QtWidgets.QFrame):
                     if is_cecc
                     else "Cliquer pour ouvrir · clic droit pour remplacer ou supprimer"
                 )
+            if detail.get("introuvable"):  # E12 : fichier disparu du disque
+                file_item.setText(f"⚠ {filename} (introuvable)")
+                file_item.setForeground(QColor(RED_KO))
+                file_item.setToolTip("Ce document n'est plus sur le disque.")
             file_item.setData(Qt.UserRole, detail.get("path", ""))
             file_item.setData(self._CODE_ROLE, detail.get("code", ""))
             self._tbl_docs.setItem(i, doc_col, file_item)
