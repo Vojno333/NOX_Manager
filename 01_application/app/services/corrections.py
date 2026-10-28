@@ -15,14 +15,14 @@ from app.dataaccess import arborescence, base_projet
 from app.models.enregistrement import Enregistrement
 from app.models.referentiel import CODE_ROHS
 from app.services import applicabilite as ap
+from app.services import lignes
 
 
-def _de_l_article(dossier: Path, fournisseur: str, reference: str) -> list[Enregistrement]:
-    return [
-        e
-        for e in base_projet.lire_tous(dossier)
-        if e.fournisseur == fournisseur and e.reference == reference
-    ]
+def _de_l_article(
+    dossier: Path, fournisseur: str, reference: str, id_ligne: str = ""
+) -> list[Enregistrement]:
+    """Enregistrements de l'article (de sa ligne, avec les lignes multiples, E1)."""
+    return lignes.enregistrements_de_la_ligne(dossier, fournisseur, reference, id_ligne)
 
 
 def _chemins_utilises(dossier: Path) -> list[str]:
@@ -51,12 +51,13 @@ def documents_justifiant(
     livrable: str,
     code: str,
     avant: str | None = None,
+    id_ligne: str = "",
 ) -> list[Enregistrement]:
     """Enregistrements avec fichier de l'article, valant pour le livrable, qui
     couvrent l'exigence ; avec `avant`, seulement ceux déposés avant cette date."""
     return [
         e
-        for e in _de_l_article(dossier, fournisseur, reference)
+        for e in _de_l_article(dossier, fournisseur, reference, id_ligne)
         if ap.vaut_pour_livrable(e, livrable)
         and e.a_un_fichier
         and ap.couvre(e, code)
@@ -117,14 +118,21 @@ def message_remplacement(codes: list[str]) -> str | None:
 
 
 def remplacer_apres_depot(
-    dossier: Path, fournisseur: str, reference: str, debut: str, selection: list[str]
+    dossier: Path,
+    fournisseur: str,
+    reference: str,
+    debut: str,
+    selection: list[str],
+    id_ligne: str = "",
 ) -> tuple[list[str], list[str]]:
     """Après un dépôt de remplacement commencé à `debut` : les anciens documents ne
     justifient plus les exigences sélectionnées que le nouveau couvre (E6).
 
     Les autres exigences de l'ancien document restent justifiées par lui.
     """
-    avec_fichier = [e for e in _de_l_article(dossier, fournisseur, reference) if e.a_un_fichier]
+    avec_fichier = [
+        e for e in _de_l_article(dossier, fournisseur, reference, id_ligne) if e.a_un_fichier
+    ]
     nouveaux = [e for e in avec_fichier if (e.depose_le or "") >= debut]
     codes = [code for code in selection if any(ap.couvre(e, code) for e in nouveaux)]
     livrables = {str(e.livrable_source).upper() for e in nouveaux}
@@ -148,6 +156,7 @@ class Vidage:
     a_supprimer: list[Enregistrement] = field(default_factory=list)
     a_reduire: list[Enregistrement] = field(default_factory=list)  # copies RoHS d'un autre livrable
     fichiers: set[Path] = field(default_factory=set)
+    id_ligne: str = ""  # E1 : ligne de l'article
     # E7 : justificatifs RoHS de l'article rangés dans l'autre livrable (CE ↔ DPE).
     dossier_autre: str = ""
     rohs_autre: list[Enregistrement] = field(default_factory=list)
@@ -188,7 +197,12 @@ class Vidage:
 
 
 def preparer_vidage(
-    dossier: Path, numero_dossier: str, fournisseur: str, reference: str, livrable: str
+    dossier: Path,
+    numero_dossier: str,
+    fournisseur: str,
+    reference: str,
+    livrable: str,
+    id_ligne: str = "",
 ) -> Vidage:
     """Ce que vider l'article pour ce livrable supprimerait.
 
@@ -198,8 +212,8 @@ def preparer_vidage(
     """
     livrable = livrable.upper()
     nom_dossier = f"BDD {livrable} {numero_dossier}"
-    plan = Vidage(fournisseur, reference, livrable, nom_dossier)
-    for e in _de_l_article(dossier, fournisseur, reference):
+    plan = Vidage(fournisseur, reference, livrable, nom_dossier, id_ligne=id_ligne)
+    for e in _de_l_article(dossier, fournisseur, reference, id_ligne):
         depuis_ce_livrable = str(e.livrable_source).upper() == livrable
         if e.a_un_fichier and PurePosixPath(e.chemin_relatif).parts[0] == nom_dossier:
             plan.a_supprimer.append(e)
@@ -208,23 +222,26 @@ def preparer_vidage(
         elif depuis_ce_livrable:
             plan.a_reduire.append(e)
     fichiers = {dossier / e.chemin_relatif for e in plan.a_supprimer if e.a_un_fichier}
+    sous = lignes.sous_dossier_de(dossier, fournisseur, reference, id_ligne)
     dossier_article = arborescence.dossier_documents(
-        dossier, livrable, numero_dossier, fournisseur, reference
+        dossier, livrable, numero_dossier, fournisseur, reference, sous
     )
     fichiers |= set(arborescence.fichiers_du_dossier(dossier_article))
     plan.fichiers = {f for f in fichiers if arborescence.existe(f)}
     autre = {"CE": "DPE", "DPE": "CE"}.get(livrable)
     if autre:
         plan.dossier_autre = f"BDD {autre} {numero_dossier}"
-        plan.rohs_autre = _rohs_dans(dossier, fournisseur, reference, plan.dossier_autre)
+        plan.rohs_autre = _rohs_dans(dossier, fournisseur, reference, plan.dossier_autre, id_ligne)
     return plan
 
 
-def _rohs_dans(dossier: Path, fournisseur: str, reference: str, nom_dossier: str):
+def _rohs_dans(
+    dossier: Path, fournisseur: str, reference: str, nom_dossier: str, id_ligne: str = ""
+):
     """Enregistrements de l'article dont le fichier, rangé dans `nom_dossier`, couvre RoHS."""
     return [
         e
-        for e in _de_l_article(dossier, fournisseur, reference)
+        for e in _de_l_article(dossier, fournisseur, reference, id_ligne)
         if e.a_un_fichier
         and PurePosixPath(e.chemin_relatif).parts[0] == nom_dossier
         and any(ap.est_rohs(c) for c in e.codes_couverts)
@@ -264,7 +281,9 @@ def vider(dossier: Path, plan: Vidage) -> list[str]:
     for e in plan.a_reduire:
         echecs += _garder_rohs(dossier, e)
     if plan.dossier_autre:
-        rohs = _rohs_dans(dossier, plan.fournisseur, plan.reference, plan.dossier_autre)
+        rohs = _rohs_dans(
+            dossier, plan.fournisseur, plan.reference, plan.dossier_autre, plan.id_ligne
+        )
         _, erreurs = retirer_exigences(dossier, rohs, [CODE_ROHS])
         echecs += erreurs
     utilises = {

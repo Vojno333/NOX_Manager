@@ -106,3 +106,101 @@ def test_e1_retirer_une_seule_ligne(lignes_multiples, projet_essai):
     assert len(enrs) == 1 and enrs[0].id_ligne == ""  # celui de la 1re ligne est gardé
     assert not sous.exists()
     assert (projet_essai / "BDD CE N999/Documents/ACME/REF-001/CE_ACME_REF-001.pdf").is_file()
+
+
+# ── Tâche 38 : E1 (2/2), suivi, dépôt, corrections, export ──
+def _deux_lignes(projet_essai):
+    projet = projet_fichier.lire_projet(projet_essai)
+    projet_fichier.enregistrer_projet(projet)  # fige les identifiants de ligne
+    projet = projet_fichier.lire_projet(projet_essai)
+    return projet, projet.lignes_de("ACME", "REF-001")
+
+
+def _suivi(projet_essai, id_ligne, livrable="CE"):
+    from app.services import completion
+
+    lignes_suivi = completion.lignes_de_suivi(projet_fichier.lire_projet(projet_essai))
+    return next(
+        lg
+        for lg in lignes_suivi
+        if (lg.reference, lg.livrable, lg.id_ligne) == ("REF-001", livrable, id_ligne)
+    )
+
+
+def test_e1_une_ligne_de_suivi_par_ligne(lignes_multiples, projet_essai):
+    from app.services import completion
+
+    projet, (premiere, seconde) = _deux_lignes(projet_essai)
+    suivi = completion.lignes_de_suivi(projet)
+    assert len(suivi) == 21
+    assert _suivi(projet_essai, premiere.id_ligne).completion_texte == "67 %"
+    deuxieme = _suivi(projet_essai, seconde.id_ligne)
+    assert deuxieme.completion_texte == "0 %" and deuxieme.n_commande == "CMD-1B"
+
+
+def test_e1_depot_et_vidage_sur_une_seule_ligne(lignes_multiples, projet_essai, tmp_path):
+    from app.models.depot import SaisieDepot
+    from app.models.referentiel import EXIGENCES_CE
+    from app.services import applicabilite as ap
+    from app.services import corrections, depot
+
+    _, (premiere, seconde) = _deux_lignes(projet_essai)
+    fichier = tmp_path / "rapport.pdf"
+    fichier.write_bytes(b"%PDF")
+    saisie = SaisieDepot(
+        projet_essai,
+        "CE",
+        [("ACME", "REF-001", seconde.id_ligne)],
+        fichier=fichier,
+        etats={c: ap.NA for c, _ in EXIGENCES_CE} | {"2006/42/UE": ap.APPLICABLE},
+        coches={"2006/42/UE"},
+    )
+    depot.enregistrer(saisie)
+    sous = projet_essai / "BDD CE N999/Documents/ACME/REF-001/CMD-1B/CE_ACME_REF-001.pdf"
+    assert sous.is_file()
+    assert _suivi(projet_essai, seconde.id_ligne).completion_texte == "100 %"
+    assert _suivi(projet_essai, premiere.id_ligne).completion_texte == "67 %"
+    etats = depot.etats_existants(
+        projet_essai, "ACME", "REF-001", "CE", ["2014/35/UE"], seconde.id_ligne
+    )
+    assert etats == {"2014/35/UE": ap.NA}
+
+    plan = corrections.preparer_vidage(
+        projet_essai, "N999", "ACME", "REF-001", "CE", seconde.id_ligne
+    )
+    assert [f.name for f in plan.fichiers] == ["CE_ACME_REF-001.pdf"]
+    corrections.vider(projet_essai, plan)
+    assert not sous.exists()
+    assert (projet_essai / "BDD CE N999/Documents/ACME/REF-001/CE_ACME_REF-001.pdf").is_file()
+    assert _suivi(projet_essai, premiere.id_ligne).completion_texte == "67 %"
+
+
+def test_e1_export_une_ligne_par_ligne(lignes_multiples, projet_essai):
+    from app.services import export
+    from tests.test_export import relever
+
+    _deux_lignes(projet_essai)
+    ce = next(c for c, _ in export.exporter(projet_essai) if "_CE_" in c.name)
+    cellules = relever(ce, projet_essai)["cellules"]
+    assert (cellules["B5"]["valeur"], cellules["F5"]["valeur"]) == ("REF-001", "CMD-1")
+    assert (cellules["B6"]["valeur"], cellules["F6"]["valeur"]) == ("REF-001", "CMD-1B")
+    assert "lien" in cellules["H5"] and "H6" not in cellules
+    assert cellules["B11"]["valeur"] == "REF-020"  # 7 lignes : 5 à 11
+
+
+def test_e1_tableau_et_dialogue(lignes_multiples, projet_essai):
+    from PySide6 import QtWidgets
+
+    from app.ui.dialogue_depot import DialogueDepot
+    from app.ui.tableau_de_suivi import FenetreSuivi
+
+    _ = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    projet, (_, seconde) = _deux_lignes(projet_essai)
+    fenetre = FenetreSuivi(projet)
+    assert fenetre.onglets_par_nom["Tous"].table.rowCount() == 21
+    dialogue = DialogueDepot(
+        projet=projet, livrable="CE", cibles=[("ACME", "REF-001", seconde.id_ligne)]
+    )
+    # La 2e ligne n'a encore rien : toutes ses exigences sont « Non défini ».
+    assert all(row.is_undefined() for row in dialogue._ce_page._req_rows)
+    fenetre.close()

@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
+from app.core.config import lignes_multiples
 from app.dataaccess import arborescence, base_projet
 from app.models.enregistrement import Enregistrement
 from app.models.projet import Projet
@@ -23,6 +24,7 @@ from app.models.referentiel import (
 )
 from app.models.suivi import LigneSuivi
 from app.services import applicabilite as ap
+from app.services import lignes as regles_lignes
 
 # 2015/863 est un alias de 2011/65/UE : RoHS ne compte qu'une fois.
 CODES_CE = [c for c, _ in EXIGENCES_CE if c != "2015/863"]
@@ -79,9 +81,7 @@ def lignes_de_suivi(projet: Projet, enrs: list[Enregistrement] | None = None) ->
         par_article[(e.fournisseur, e.reference)].append(e)
 
     lignes = []
-    for fournisseur, reference in couples_du_projet(projet):
-        article = projet.article(fournisseur, reference)
-        tous = par_article.get((fournisseur, reference), [])
+    for fournisseur, reference, article, tous in _articles_et_enregistrements(projet, par_article):
         for livrable in projet.livrables:
             docs = [e for e in tous if ap.vaut_pour_livrable(e, livrable)]
             if livrable == "CE":
@@ -100,9 +100,34 @@ def lignes_de_suivi(projet: Projet, enrs: list[Enregistrement] | None = None) ->
                     livrable=livrable,
                     completion=valeur,
                     enregistrements=docs,
+                    id_ligne=article.id_ligne if article and lignes_multiples() else "",
                 )
             )
     return lignes
+
+
+def _articles_et_enregistrements(projet: Projet, par_article: dict):
+    """(fournisseur, référence, ligne, enregistrements) dans l'ordre du tableau.
+
+    Sans lignes multiples : un article par couple (R3). Avec (E1) : une entrée
+    par ligne du projet, avec ses propres enregistrements.
+    """
+    if lignes_multiples() and projet.articles:
+        articles = sorted(
+            projet.articles, key=lambda a: (a.fournisseur.lower(), a.reference.lower())
+        )
+        for a in articles:
+            tous = par_article.get(a.cle, [])
+            yield (
+                a.fournisseur,
+                a.reference,
+                a,
+                [e for e in tous if regles_lignes.appartient(e, projet, a)],
+            )
+        return
+    for fournisseur, reference in couples_du_projet(projet):
+        article = projet.article(fournisseur, reference)
+        yield fournisseur, reference, article, par_article.get((fournisseur, reference), [])
 
 
 # ── Filtres et indicateurs (R20) ──
