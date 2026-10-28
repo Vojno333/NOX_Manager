@@ -33,6 +33,16 @@ Toute nouvelle ressource lue à l'exécution va dans `ressources/`, et `app.core
 5. Zipper `dist/NOX_Manager/` sous `NOX_Manager_<version>.zip` et le déposer à l'endroit de diffusion (**à renseigner**).
 6. Le référent technique pose l'étiquette de version (`git tag v<version>`).
 
+## Réglages (`config.json`, à côté de l'exécutable dans `_internal/`)
+
+| Réglage | Valeur livrée | Rôle |
+|---|---|---|
+| `lignes_multiples` | `false` | E1, décision 0005. À passer à `true` **sur tous les postes en même temps**, une fois que plus aucun poste n'utilise l'ancienne application : un même article peut alors figurer sur plusieurs lignes. |
+| `verrou_rafraichissement_minutes` | `2` | E14, décision 0004 : fréquence du signe de vie d'un projet ouvert en modification. |
+| `verrou_peremption_minutes` | `15` | E14 : au-delà, un verrou sans signe de vie (poste planté) est abandonné. |
+
+Pendant la diffusion poste par poste, l'ancienne application ne respecte pas le verrou de modification (E14) : prévenir les collègues de ne pas modifier un même projet à deux tant que tous les postes ne sont pas passés.
+
 ## Mise à jour chez l'utilisateur
 
 Remplacer le dossier `NOX_Manager` complet. Les données (`~/.nox_manager/` et les dossiers des projets sur le partage) sont hors du dossier d'installation : elles ne sont pas touchées. Le format des données est inchangé (décision 0003) : l'ancienne et la nouvelle application lisent les mêmes projets.

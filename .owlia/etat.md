@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (reste E1 : tâches 37 et 38)
+- Étape en cours : R8 terminée — toutes les tâches de `docs/travaux.md` sont faites ; suite : livraison
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
@@ -28,10 +28,11 @@
 - Tâche 22 (recette) faite le 2026-10-28 avec l'utilisateur, version allégée (`docs/recette.md`) : tout conforme, vrai projet compris (`tests/reference/comparer_projet.py`, joué par l'utilisateur, projet confidentiel). Un écart, M3 / S21, fidèle à l'ancienne application, refusé par l'utilisateur → E7 (gardée à sa place, après la tâche 23).
 - Tâche 23 faite le 2026-10-28 (accord de l'utilisateur) : `00_ancien/` supprimé, ancien code conservé sous l'étiquette `v1-avant-refonte` ; `AGENTS.md`, `README.md` et les docstrings y renvoient. **Reconstruction terminée.**
 
-- Évolutions faites le 2026-10-28 (une branche et un commit par tâche, référence `attendu/` mise à jour dans la tâche) : E5 (25), E8 (26), E2 (27), E6 (28), E9 (29), E3 (30), E7 (31, corrige l'écart M3 de la recette), E11 (33), E4 (34), E13 (35), E10 (36), E14 (24, décision 0004 : lecture seule stricte), E12 (32). 129 tests au vert.
+- Évolutions faites le 2026-10-28 (une branche et un commit par tâche, référence `attendu/` mise à jour dans la tâche) : E5 (25), E8 (26), E2 (27), E6 (28), E9 (29), E3 (30), E7 (31, corrige l'écart M3 de la recette), E11 (33), E4 (34), E13 (35), E10 (36), E14 (24, décision 0004 : lecture seule stricte), E12 (32), E1 (37–38, décision 0005 : désactivée par défaut, interrupteur `lignes_multiples`). 140 tests au vert.
 
 ## Reste à faire
-- Tâches 37 et 38 — E1 (lignes multiples d'un même article) : décision sur le format des données à écrire d'abord.
+- Livraison par le référent technique (`docs/livraison.md`) : diffusion poste par poste par l'utilisateur ; quand plus aucun poste n'a l'ancienne application, passer `lignes_multiples` à `true` partout.
+- Recette des évolutions avec l'utilisateur (non faite : seules les règles R ont été recettées).
 
 ## Écarts et constats relevés pendant la reconstruction (à valider en recette)
 - **R7, fichier glissé-déposé** : l'ancienne application ne contrôlait le format que dans le sélecteur de fichier ; un fichier glissé passait sans contrôle. Le contrôle est maintenant fait aussi au dépôt (R7 et AGENTS §7).
@@ -42,9 +43,7 @@
 - Comportements repris à l'identique, candidats à une évolution : après un changement des livrables suivis dans le paramétrage, les onglets du tableau ne sont mis à jour qu'à la réouverture ; au premier affichage, le tableau est trié par fournisseur décroissant.
 
 ## Angles morts signalés en R7
-- E1 suppose un changement du format des données (identifiant de ligne) : décision à écrire avant la tâche 37.
-- E14 : modalité du verrou à préciser avec l'utilisateur avant la tâche 24.
-- Tâche 22 (recette) : demande l'utilisateur et une copie d'un vrai projet du partage.
+- Tous traités (décisions 0004 et 0005, recette du 2026-10-28).
 
 ## En attente d'arbitrage
 - aucune
