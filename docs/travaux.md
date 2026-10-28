@@ -49,7 +49,7 @@ Tests : 8 — N/A puis Applicable → Applicable ; « 1907/2006 \| REACh » = «
 | 10 | **Complétion et indicateurs.** `services/completion.py` : lignes article × livrable (liste du projet, repli sur les dossiers), complétion CE / DPE et CECC, indicateurs. | 4, 5, 8 | R17, R19, R20 | ☑ |
 | 11 | **Export Excel.** `dataaccess/export_excel.py` (modèles, copie de lignes et de styles, mise en forme conditionnelle, formules du bas, liens) et `services/export.py` (contenu des cellules, archivage dans `OLD/`, contrôle du fichier ouvert). | 4, 5, 7, 8 | R24, R25, R25 bis, R25 ter, R25 quater, R26, R27 | ☑ |
 | 12 | **Dépôt d'un justificatif.** `services/depot.py` : contrôles, nommage automatique, livrables de rangement (RoHS), un enregistrement par dossier, applicabilité seule, pré-remplissage CECC, nom CECC repris du fichier (C7). | 5, 7, 8 | R7–R14 | ☑ |
-| 13 | **Corrections.** `services/corrections.py` : retirer le justificatif d'une exigence, remplacer, vider un article pour un livrable (copie RoHS réduite à RoHS). | 5, 7, 8 | R14, R21, R22, R23 | ☐ |
+| 13 | **Corrections.** `services/corrections.py` : retirer le justificatif d'une exigence, remplacer, vider un article pour un livrable (copie RoHS réduite à RoHS). | 5, 7, 8 | R14, R21, R22, R23 | ☑ |
 | 14 | **Écran d'accueil.** `ui/accueil.py` et `main.py` : projets récents, recherche, ouvrir, créer, supprimer, statistiques disque calculées hors du fil de l'interface. | 2, 6, 9 | R28, R29 | ☐ |
 | 15 | **Dialogue de projet.** `ui/dialogue_projet.py` : saisie manuelle, onglet d'import en masse, modèle CSV, mode modification. | 2, 9 | R1–R6 | ☐ |
 
@@ -101,8 +101,8 @@ Sources : 21 ← `00_ancien/NOX_Manager.spec`, `qt_main.py`, `Documentation/02 -
 | 12 | 30 | **E3** Extension toujours conservée | 27 | `services/depot.py` | ☑ |
 | 12 | 31 | **E7** Vider un article vide aussi le RoHS de l'autre livrable | 28 | `services/corrections.py` | ☑ |
 | 12 | 32 | **E12** Fichier disparu signalé | 24, 25 | `services/completion.py`, `ui/tableau_de_suivi.py` | ☑ |
-| 13 | 33 | **E11** Chaque export pointe vers son propre dossier | 29 | `services/export.py` | ☐ |
-| 13 | 34 | **E4** Premier remplissage de la fiche CECC | 30 | `services/depot.py` | ☐ |
+| 13 | 33 | **E11** Chaque export pointe vers son propre dossier | 29 | `services/export.py` | ☑ |
+| 13 | 34 | **E4** Premier remplissage de la fiche CECC | 30 | `services/depot.py` | ☑ |
 | 14 | 35 | **E13** Liens relatifs dans les exports | 33 | `dataaccess/export_excel.py`, `services/export.py` | ☐ |
 | 14 | 36 | **E10** Nom CECC vraiment obligatoire | 34 | `services/depot.py`, `ui/dialogue_depot.py` | ☐ |
 | 15 | 37 | **E1 (1/2)** Lignes multiples d'un même article : identifiant de ligne, rangement en sous-dossiers, enregistrements rattachés à la ligne | 23, décision à écrire | `models/`, `dataaccess/`, `services/projets.py` | ☐ |

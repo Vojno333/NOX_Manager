@@ -1,0 +1,120 @@
+"""Tâche 13 : corrections (R21, R22, R23), scénarios S17 à S21."""
+
+from __future__ import annotations
+
+from datetime import datetime
+
+from app.dataaccess import base_projet, projet_fichier
+from app.models.depot import SaisieDepot
+from app.models.referentiel import EXIGENCES_CE
+from app.services import applicabilite as ap
+from app.services import completion, corrections, depot
+
+CE_ACME = "BDD CE N999/Documents/ACME/REF-001/CE_ACME_REF-001.pdf"
+
+
+def _completion(projet, f, r, livrable):
+    lignes = completion.lignes_de_suivi(projet_fichier.lire_projet(projet))
+    return next(
+        ligne
+        for ligne in lignes
+        if (ligne.fournisseur, ligne.reference, ligne.livrable) == (f, r, livrable)
+    )
+
+
+def _retirer(projet, f, r, livrable, code):
+    docs = corrections.documents_justifiant(projet, f, r, livrable, code)
+    return docs, corrections.retirer_exigences(projet, docs, [code])
+
+
+def test_s17_s18_r21_retirer_le_justificatif_d_une_exigence(projet_essai):
+    docs, (supprimes, erreurs) = _retirer(projet_essai, "ACME", "REF-001", "CE", "2014/30/UE")
+    assert len(docs) == 1 and supprimes == [] and erreurs == []
+    assert (projet_essai / CE_ACME).is_file()
+    ligne = _completion(projet_essai, "ACME", "REF-001", "CE")
+    assert ligne.completion_texte == "33 %"
+    assert ap.etat_exigence(ligne.enregistrements, "2014/30/UE") == ap.APPLICABLE
+
+    _, (supprimes, _) = _retirer(projet_essai, "ACME", "REF-001", "CE", "2006/42/UE")
+    assert supprimes == ["CE_ACME_REF-001.pdf"]
+    assert not (projet_essai / CE_ACME).exists()
+    assert _completion(projet_essai, "ACME", "REF-001", "CE").completion_texte == "0 %"
+
+
+def test_s19_r21_retirer_rohs_retire_des_deux_cotes(projet_essai):
+    docs = corrections.documents_justifiant(projet_essai, "BETA", "REF-010", "CE", "2011/65/UE")
+    message = corrections.message_retrait("BETA", "REF-010", "2011/65/UE", docs)
+    assert message.endswith("RoHS est commun au CE et au DPE : le retrait s'applique aux deux.")
+    corrections.retirer_exigences(projet_essai, docs, ["2011/65/UE"])
+    for t in ("CE", "DPE"):
+        ligne = _completion(projet_essai, "BETA", "REF-010", t)
+        assert not any(e.a_un_fichier for e in ligne.enregistrements if ap.couvre(e, "2011/65/UE"))
+    assert not (projet_essai / "BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").exists()
+
+
+def test_s20_r22_remplacer_le_justificatif(projet_essai, tmp_path):
+    debut = datetime.now().isoformat()
+    nouveau = tmp_path / "nouveau.pdf"
+    nouveau.write_bytes(b"%PDF")
+    etats = {c: ap.APPLICABLE for c, _ in EXIGENCES_CE}
+    saisie = SaisieDepot(
+        projet_essai,
+        "CE",
+        [("ACME", "REF-001")],
+        fichier=nouveau,
+        etats=etats,
+        coches={"2006/42/UE", "2014/30/UE"},
+    )
+    depot.enregistrer(saisie)
+    supprimes, _ = corrections.remplacer_apres_depot(projet_essai, "ACME", "REF-001", debut)
+    assert supprimes == ["CE_ACME_REF-001.pdf"]
+    anciens = [e for e in base_projet.lire_tous(projet_essai) if e.depose_le < debut]
+    acme = [e for e in anciens if e.reference == "REF-001"]
+    assert acme[0].codes_couverts == [] and not acme[0].a_un_fichier
+
+
+def test_s21_r23_vider_un_article_pour_le_ce(projet_essai):
+    plan = corrections.preparer_vidage(projet_essai, "N999", "BETA", "REF-010", "CE")
+    assert [f.name for f in plan.fichiers] == ["DPE_BETA_REF-010.pdf"]
+    message = plan.message_confirmation()
+    assert message.startswith("Supprimer les informations CE de BETA / REF-010 ?")
+    assert "• 1 fichier(s) du dossier « BDD CE N999 » :\n• DPE_BETA_REF-010.pdf" in message
+    assert "un justificatif RoHS rangé dans l'autre BDD restera visible ici." in message
+    assert corrections.vider(projet_essai, plan) == []
+    assert not (projet_essai / "BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").exists()
+    assert all(
+        not e.chemin_relatif.startswith("BDD CE N999/")
+        for e in base_projet.lire_tous(projet_essai)
+        if e.reference == "REF-010"
+    )
+    dpe = _completion(projet_essai, "BETA", "REF-010", "DPE")
+    assert dpe.completion_texte == "50 %"
+    assert (projet_essai / "BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").is_file()
+
+
+def test_r23_rien_a_vider(projet_essai):
+    plan = corrections.preparer_vidage(projet_essai, "N999", "DELTA", "REF-030", "CECC")
+    assert plan.vide
+    assert plan.message_rien() == "Aucune information ni aucun document CECC pour DELTA / REF-030."
+
+
+def test_r23_copie_saisie_depuis_ce_livrable_reduite_a_rohs(projet_essai, tmp_path):
+    fichier = tmp_path / "r.pdf"
+    fichier.write_bytes(b"%PDF")
+    etats = {c: ap.APPLICABLE for c, _ in EXIGENCES_CE}
+    depot.enregistrer(
+        SaisieDepot(
+            projet_essai,
+            "CE",
+            [("ACME", "REF-002")],
+            fichier=fichier,
+            etats=etats,
+            coches={"2011/65/UE", "2015/863", "2006/42/UE"},
+        )
+    )
+    plan = corrections.preparer_vidage(projet_essai, "N999", "ACME", "REF-002", "CE")
+    (reduit,) = plan.a_reduire
+    assert reduit.chemin_relatif.startswith("BDD DPE")
+    corrections.vider(projet_essai, plan)
+    (copie,) = [e for e in base_projet.lire_tous(projet_essai) if e.id == reduit.id]
+    assert copie.codes_couverts == ["2011/65/UE", "2015/863"] and copie.a_un_fichier
