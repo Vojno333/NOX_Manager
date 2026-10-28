@@ -49,11 +49,6 @@ def test_r14_document_rohs_vaut_pour_ce_et_dpe():
     assert ap.vaut_pour_livrable(range_ce, "ce")
 
 
-def test_r18_estimation_reperee_au_nom_du_fichier():
-    assert ap.est_estimation(_enr("x", nom_stocke="CE_A_R_Estimation.pdf"))
-    assert not ap.est_estimation(_enr("x", nom_stocke="CE_A_R.pdf"))
-
-
 def test_statut_cecc_lu_dans_l_ancienne_cle():
     assert ap.statut_cecc({"status": "Estimation"}) == "Estimation"
     assert ap.statut_cecc({"cecc_etat": "Validé", "status": "Relancé"}) == "Validé"

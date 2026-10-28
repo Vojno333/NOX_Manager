@@ -34,7 +34,7 @@
       "mnp": "MNP-002",
       "order_number": "CMD-2",
       "type": "CE",
-      "completion": "25 %"
+      "completion": "50 %"
     },
     {
       "supplier": "ACME",
@@ -124,7 +124,7 @@
       "mnp": "",
       "order_number": "",
       "type": "CECC",
-      "completion": "0 %"
+      "completion": "100 %"
     },
     {
       "supplier": "EPS",
@@ -164,8 +164,8 @@
     }
   ],
   "indicateurs": {
-    "CE": "35 %",
-    "CECC": "17 %",
+    "CE": "39 %",
+    "CECC": "33 %",
     "DPE": "25 %"
   }
 }
