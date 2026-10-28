@@ -86,4 +86,4 @@ S1 à S10 et S27 conformes à la main ; S11 à S26 couverts par les tests automa
 
 ## Écarts constatés
 
-- **M3 / S21** : vider un article dans un livrable laisse la copie RoHS de l'autre livrable, qui continue de compter (BETA / REF-010 CE à 20 %). Comportement de l'ancienne application, refusé par l'utilisateur : corrigé par **E7** (tâche 31).
+- **M3 / S21** : vider un article dans un livrable laisse la copie RoHS de l'autre livrable, qui continue de compter (BETA / REF-010 CE à 20 %). Comportement de l'ancienne application, refusé par l'utilisateur : corrigé par **E7** (tâche 31, faite le 2026-10-28) : vider retire aussi le justificatif RoHS de l'autre livrable, dossier et affichage, en gardant son applicabilité.

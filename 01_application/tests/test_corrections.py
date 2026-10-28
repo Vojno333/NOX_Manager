@@ -98,23 +98,41 @@ def test_e6_exigence_selectionnee_mais_non_couverte_par_le_nouveau(projet_essai,
     assert ancien.codes_couverts == ["2006/42/UE", "2014/30/UE"]
 
 
-def test_s21_r23_vider_un_article_pour_le_ce(projet_essai):
+BETA_CE = "BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+BETA_DPE = "BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+
+
+def test_e7_vider_en_ce_retire_aussi_le_rohs_du_dpe(projet_essai):
     plan = corrections.preparer_vidage(projet_essai, "N999", "BETA", "REF-010", "CE")
     assert [f.name for f in plan.fichiers] == ["DPE_BETA_REF-010.pdf"]
     message = plan.message_confirmation()
     assert message.startswith("Supprimer les informations CE de BETA / REF-010 ?")
     assert "• 1 fichier(s) du dossier « BDD CE N999 » :\n• DPE_BETA_REF-010.pdf" in message
-    assert "un justificatif RoHS rangé dans l'autre BDD restera visible ici." in message
+    assert "son justificatif rangé dans « BDD DPE N999 » est aussi retiré" in message
     assert corrections.vider(projet_essai, plan) == []
-    assert not (projet_essai / "BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").exists()
-    assert all(
-        not e.chemin_relatif.startswith("BDD CE N999/")
-        for e in base_projet.lire_tous(projet_essai)
-        if e.reference == "REF-010"
-    )
+    assert not (projet_essai / BETA_CE).exists() and not (projet_essai / BETA_DPE).exists()
+    # Plus rien ne justifie RoHS, ni en CE ni en DPE.
+    for t in ("CE", "DPE"):
+        ligne = _completion(projet_essai, "BETA", "REF-010", t)
+        assert not any(e.a_un_fichier for e in ligne.enregistrements)
     dpe = _completion(projet_essai, "BETA", "REF-010", "DPE")
-    assert dpe.completion_texte == "50 %"
-    assert (projet_essai / "BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf").is_file()
+    assert dpe.completion_texte == "0 %"
+    # L'applicabilité du DPE est conservée : RoHS et REACh restent applicables.
+    assert ap.etat_exigence(dpe.enregistrements, "1907/2006") == ap.APPLICABLE
+    assert ap.etat_exigence(dpe.enregistrements, "2011/65/UE") == ap.APPLICABLE
+
+
+def test_e7_vider_en_dpe_retire_aussi_le_rohs_du_ce(projet_essai):
+    plan = corrections.preparer_vidage(projet_essai, "N999", "BETA", "REF-010", "DPE")
+    assert [e.chemin_relatif for e in plan.rohs_autre] == [BETA_CE]
+    corrections.vider(projet_essai, plan)
+    assert not (projet_essai / BETA_CE).exists()
+    assert _completion(projet_essai, "BETA", "REF-010", "CE").completion_texte == "0 %"
+
+
+def test_e7_sans_rohs_dans_l_autre_livrable_rien_n_est_signale(projet_essai):
+    plan = corrections.preparer_vidage(projet_essai, "N999", "ACME", "REF-001", "CE")
+    assert plan.rohs_autre == [] and "RoHS est commun" not in plan.message_confirmation()
 
 
 def test_r23_rien_a_vider(projet_essai):
@@ -123,7 +141,7 @@ def test_r23_rien_a_vider(projet_essai):
     assert plan.message_rien() == "Aucune information ni aucun document CECC pour DELTA / REF-030."
 
 
-def test_r23_copie_saisie_depuis_ce_livrable_reduite_a_rohs(projet_essai, tmp_path):
+def test_e7_copie_saisie_depuis_ce_livrable_retiree_aussi(projet_essai, tmp_path):
     fichier = tmp_path / "r.pdf"
     fichier.write_bytes(b"%PDF")
     etats = {c: ap.APPLICABLE for c, _ in EXIGENCES_CE}
@@ -138,8 +156,9 @@ def test_r23_copie_saisie_depuis_ce_livrable_reduite_a_rohs(projet_essai, tmp_pa
         )
     )
     plan = corrections.preparer_vidage(projet_essai, "N999", "ACME", "REF-002", "CE")
-    (reduit,) = plan.a_reduire
-    assert reduit.chemin_relatif.startswith("BDD DPE")
+    (copie_dpe,) = plan.a_reduire
+    assert copie_dpe.chemin_relatif.startswith("BDD DPE")
     corrections.vider(projet_essai, plan)
-    (copie,) = [e for e in base_projet.lire_tous(projet_essai) if e.id == reduit.id]
-    assert copie.codes_couverts == ["2011/65/UE", "2015/863"] and copie.a_un_fichier
+    (copie,) = [e for e in base_projet.lire_tous(projet_essai) if e.id == copie_dpe.id]
+    assert copie.codes_couverts == [] and not copie.a_un_fichier
+    assert not (projet_essai / copie_dpe.chemin_relatif).exists()
