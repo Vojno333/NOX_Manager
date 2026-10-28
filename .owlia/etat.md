@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (prochaine tâche : 3)
+- Étape en cours : R8 — Réaliser (prochaine tâche : 4)
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
@@ -19,9 +19,10 @@
 
 - R8 en cours — tâche 1 (ressources et référentiels) faite : `ressources/`, `core/config.ressource()`, `models/referentiel.py`.
 - Tâche 2 (thème et géométrie) faite : `ui/theme.py` (feuille de style identique à l'ancienne), `ui/geometrie.py`.
+- Tâche 3 (contrôles automatiques) faite : `.github/workflows/controles.yml` (Windows, Python 3.14 : mise en forme, lint, tests, couches). Vague 1 terminée.
 
 ## Reste à faire
-- R8 Réaliser, une tâche à la fois : vague 1, tâche 3, puis vague 2
+- R8 Réaliser, une tâche à la fois : vague 2 (tâches 4, 5, 6, 7)
 
 ## Angles morts signalés en R7
 - E1 suppose un changement du format des données (identifiant de ligne) : décision à écrire avant la tâche 37.
@@ -35,7 +36,7 @@
 - Commits autorisés le 2026-10-28. Étiquette `v1-avant-refonte` posée sur d7f13be, reprise commitée sur `develop` (`uv.lock` versionné). Chaque tâche est fusionnée localement dans `develop` (choix de l'utilisateur) ; rien n'est poussé sur GitHub.
 - Liste des pays (menu CECC) : Algérie, Belgique et Chine y figurent deux fois. Reprise à l'identique ; à proposer en évolution.
 - Faire remonter au responsable de la méthode le besoin d'une option « application de bureau » dans le catalogue (décision 0002).
-- Contrôles automatiques : la CI du gabarit vise GitLab, le dépôt est sur GitHub ; à brancher (lint, tests, couches, référence) lors d'une tâche dédiée.
+- Contrôles automatiques : le workflow GitHub ne tournera qu'au premier envoi sur GitHub (rien n'est poussé pour l'instant). La référence y sera branchée par la tâche 16.
 - Emplacement de diffusion de l'exécutable : à documenter.
 
 ## Pistes V2
