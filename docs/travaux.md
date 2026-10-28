@@ -60,7 +60,7 @@ Tests : 10 — `attendu/tableau_de_suivi.json` identique. 11 — `attendu/export
 
 | # | Tâche | Dépend de | Règles | Fait |
 |---|---|---|---|---|
-| 16 | **Référence automatisée.** `tests/test_reference.py` : sur une copie de `projet_essai`, le nouveau code produit exactement `attendu/` (tableau, exports, arborescence). | 10, 11 | R31 | ☐ |
+| 16 | **Référence automatisée.** `tests/test_reference.py` : sur une copie de `projet_essai`, le nouveau code produit exactement `attendu/` (tableau, exports, arborescence). | 10, 11 | R31 | ☑ |
 | 17 | **Composants du dépôt.** `ui/composants_depot.py` : bascule à trois états, zone de glisser-déposer, pages d'exigences CE et DPE (RoHS synchronisé, compteurs, aperçu du nom). | 2, 1 | R10, R14 | ☐ |
 | 18 | **Tableau de suivi.** `ui/tableau_de_suivi.py` et `ui/filtre.py` : onglets Tous / par livrable, indicateurs, filtres par colonne et pastilles, bouton d'export et message de fin. | 2, 10, 11 | R20, R24, R27 | ☐ |
 
@@ -106,7 +106,7 @@ Sources : 21 ← `00_ancien/NOX_Manager.spec`, `qt_main.py`, `Documentation/02 -
 | 14 | 35 | **E13** Liens relatifs dans les exports | 33 | `dataaccess/export_excel.py`, `services/export.py` | ☑ |
 | 14 | 36 | **E10** Nom CECC vraiment obligatoire | 34 | `services/depot.py`, `ui/dialogue_depot.py` | ☑ |
 | 15 | 37 | **E1 (1/2)** Lignes multiples d'un même article : identifiant de ligne, rangement en sous-dossiers, enregistrements rattachés à la ligne | 23, décision à écrire | `models/`, `dataaccess/`, `services/projets.py` | ☑ |
-| 16 | 38 | **E1 (2/2)** Lignes multiples : tableau de suivi, dépôt, corrections, export | 37 | `services/`, `ui/` | ☐ |
+| 16 | 38 | **E1 (2/2)** Lignes multiples : tableau de suivi, dépôt, corrections, export | 37 | `services/`, `ui/` | ☑ |
 
 ## Couverture des règles
 
