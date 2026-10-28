@@ -651,9 +651,9 @@ class DialogueDepot(QtWidgets.QDialog):
     # ── Pré-remplissage ───────────────────────────────────────────────────────
 
     def _prefill_existing_cecc_fields(self):
-        """La fiche CECC reprend la dernière fiche de l'article (R12)."""
+        """Dernière fiche de l'article (R12), sinon fournisseur et MNP (E4)."""
         try:
-            fiche = depot.fiche_cecc_existante(self.project_dir, self.supplier, self.reference)
+            fiche = depot.fiche_cecc_initiale(self.project_dir, self.supplier, self.reference)
         except Exception:  # base illisible : fiche laissée vide, comme l'ancienne application
             return
         if fiche:

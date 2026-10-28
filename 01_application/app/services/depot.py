@@ -89,9 +89,18 @@ def champs_cecc_finals(saisie: SaisieDepot) -> dict[str, str]:
     return champs
 
 
-def fiche_cecc_existante(dossier: Path, fournisseur: str, reference: str) -> dict:
-    """Pré-remplissage : la dernière fiche CECC de l'article."""
-    return base_projet.derniere_fiche_cecc(dossier, fournisseur, reference)
+def fiche_cecc_initiale(dossier: Path, fournisseur: str, reference: str) -> dict:
+    """Pré-remplissage de la fiche CECC : la dernière fiche de l'article (R12) ;
+    à défaut, le fournisseur et le MNP de l'article (E4)."""
+    fiche = base_projet.derniere_fiche_cecc(dossier, fournisseur, reference)
+    if fiche:
+        return fiche
+    projet = projet_fichier.lire_projet(dossier)
+    article = projet.article(fournisseur, reference) if projet else None
+    return {
+        "manufacturer_doc": fournisseur,
+        "manufacturer_part_number": article.mnp if article else "",
+    }
 
 
 def etats_existants(
