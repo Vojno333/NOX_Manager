@@ -9,11 +9,12 @@ Repris de `00_ancien/wikidocs_qt/project_dashboard_window.py`
 from __future__ import annotations
 
 from collections import defaultdict
+from pathlib import Path
 
 from app.dataaccess import arborescence, base_projet
 from app.models.enregistrement import Enregistrement
 from app.models.projet import Projet
-from app.models.referentiel import EXIGENCES_CE, EXIGENCES_DPE, STATUT_VALIDE
+from app.models.referentiel import CHAMPS_CECC, EXIGENCES_CE, EXIGENCES_DPE, STATUT_VALIDE
 from app.models.suivi import LigneSuivi
 from app.services import applicabilite as ap
 
@@ -121,3 +122,66 @@ def indicateurs(lignes: list[LigneSuivi]) -> dict[str, int]:
         valeurs = [ligne.completion for ligne in lignes if ligne.livrable == livrable]
         resultat[livrable] = round(sum(valeurs) / len(valeurs) * 100) if valeurs else 0
     return resultat
+
+
+# ── Détail d'une ligne (panneau de droite) ──
+def lignes_de_detail(ligne: LigneSuivi, dossier: Path) -> list[dict]:
+    """Une ligne par exigence (CE / DPE) ou par champ de fiche (CECC).
+
+    CE / DPE : code, « code | libellé », applicabilité, document le plus récent
+    qui la couvre et son chemin. CECC : champs de la dernière fiche ; le nom
+    CECC porte le chemin du document.
+    """
+    enrs = ligne.enregistrements
+    livrable = ligne.livrable.upper()
+    if livrable == "CECC":
+        return _detail_cecc(enrs, dossier)
+    attendues = {"CE": EXIGENCES_CE, "DPE": EXIGENCES_DPE}.get(livrable)
+    if attendues is None:
+        return []
+    derniers: dict[str, dict] = {}
+    for e in ap.plus_recents_d_abord(enrs):
+        if not ap.vaut_pour_livrable(e, livrable) or not e.a_un_fichier:
+            continue
+        for code in e.codes_couverts:
+            code_normal = ap.normaliser_code(code)
+            if code_normal not in derniers:
+                derniers[code_normal] = {
+                    "filename": e.nom_stocke,
+                    "path": str(dossier / e.chemin_relatif),
+                }
+    detail = []
+    for code, libelle in attendues:
+        doc = derniers.get(ap.normaliser_code(code))
+        etat = ap.etat_exigence(enrs, code)
+        na = etat == ap.NA
+        if na:
+            applicabilite = "Non applicable"
+        elif doc or etat == ap.APPLICABLE:
+            applicabilite = "Applicable"
+        else:
+            applicabilite = "Non défini"
+        detail.append(
+            {
+                "code": code,
+                "requirement": f"{code} | {libelle}",
+                "applicability": applicabilite,
+                "filename": "" if na or not doc else doc["filename"],
+                "path": "" if na or not doc else doc["path"],
+            }
+        )
+    return detail
+
+
+def _detail_cecc(enrs: list[Enregistrement], dossier: Path) -> list[dict]:
+    dernier = max(enrs, key=lambda e: e.depose_le or "", default=None)
+    champs = dernier.champs_cecc if dernier else {}
+    chemin = str(dossier / dernier.chemin_relatif) if dernier else ""
+    return [
+        {
+            "requirement": libelle,
+            "filename": ap.valeur_cecc(champs, cle),
+            "path": chemin if cle == "nom_cecc" else "",
+        }
+        for cle, libelle, _ in CHAMPS_CECC
+    ]

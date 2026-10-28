@@ -9,6 +9,7 @@ Interface reprise de `00_ancien/wikidocs_qt/project_dashboard_window.py`
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
@@ -16,7 +17,7 @@ from PySide6.QtGui import QColor, QFont
 
 from app.models.projet import Projet
 from app.models.suivi import LigneSuivi
-from app.services import completion, depot, export, projets
+from app.services import completion, corrections, depot, export, projets
 from app.ui.elements_suivi import (
     ALT_ROW,
     BG,
@@ -49,6 +50,7 @@ from app.ui.elements_suivi import (
 )
 from app.ui.filtre import FilterPopup
 from app.ui.geometrie import ajuster_et_centrer
+from app.ui.panneau_detail import DetailPanel
 
 # Colonne du tableau → (colonne filtrable de LigneSuivi, titre de la fenêtre de filtre)
 _FILTRES = {
@@ -358,11 +360,14 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         self.separateur.setSizes([1000, 340])
         return exterieur
 
-    def _creer_panneau_detail(self) -> QtWidgets.QWidget:
-        """Panneau de droite : détail de la ligne sélectionnée (tâche 20)."""
-        panneau = QtWidgets.QFrame()
-        panneau.clear = lambda: None
-        panneau.populate = lambda *_: None
+    def _creer_panneau_detail(self) -> DetailPanel:
+        panneau = DetailPanel()
+        panneau.clear()
+        panneau.requestModify.connect(lambda _ligne: self._ouvrir_depot("import"))
+        panneau.requestDelete.connect(self._vider_reference)
+        panneau.requestOpenDoc.connect(self._ouvrir_document)
+        panneau.requestReplaceJustif.connect(self._remplacer_justificatif)
+        panneau.requestDeleteJustif.connect(self._retirer_justificatif)
         return panneau
 
     def _build_filter_row(self) -> QtWidgets.QWidget:
@@ -531,7 +536,7 @@ class FenetreSuivi(QtWidgets.QMainWindow):
         self.charger(recalculer=False)
 
     def _sur_ligne_selectionnee(self, ligne: LigneSuivi):
-        self.detail_panel.populate(ligne)
+        self.detail_panel.populate(ligne, completion.lignes_de_detail(ligne, self.projet.dossier))
 
     # ── Actions ───────────────────────────────────────────────────────────────
     def _onglet_courant(self) -> MainTab | None:
@@ -596,3 +601,89 @@ class FenetreSuivi(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.critical(self, "Erreur export", str(e))
             return
         QtWidgets.QMessageBox.information(self, "Export terminé", export.message_de_fin(resultats))
+
+    # ── Corrections depuis le panneau de détail (R21 à R23) ───────────────────
+    def _oui(self, titre: str, question: str, avertissement: bool = False) -> bool:
+        b = QtWidgets.QMessageBox.StandardButton
+        boite = QtWidgets.QMessageBox.warning if avertissement else QtWidgets.QMessageBox.question
+        return boite(self, titre, question, b.Yes | b.No, b.No) == b.Yes
+
+    def _ouvrir_document(self, chemin: str):
+        erreur = projets.ouvrir_document(Path(chemin))
+        if erreur:
+            titre, message = erreur
+            if titre == "Fichier introuvable":
+                QtWidgets.QMessageBox.warning(self, titre, message)
+            else:
+                QtWidgets.QMessageBox.critical(self, titre, message)
+
+    def _signaler(self, erreurs: list[str]):
+        for erreur in erreurs:
+            QtWidgets.QMessageBox.warning(self, "Suppression du fichier", erreur)
+
+    def _retirer_justificatif(self, ligne: LigneSuivi, code: str):
+        f, r, dossier = ligne.fournisseur, ligne.reference, self.projet.dossier
+        docs = corrections.documents_justifiant(dossier, f, r, ligne.livrable, code)
+        if not docs:
+            return
+        if not self._oui(
+            "Supprimer le justificatif", corrections.message_retrait(f, r, code, docs)
+        ):
+            return
+        _, erreurs = corrections.retirer_exigences(dossier, docs, [code])
+        self._signaler(erreurs)
+        self._recharger_et_reselectionner(ligne)
+
+    def _remplacer_justificatif(self, ligne: LigneSuivi, code: str):
+        from app.ui.dialogue_depot import DialogueDepot
+
+        fenetre = DialogueDepot(
+            projet=self.projet,
+            livrable=ligne.livrable,
+            cibles=[(ligne.fournisseur, ligne.reference)],
+            codes_coches=[code],
+            parent=self,
+        )
+        if fenetre.exec() != QtWidgets.QDialog.Accepted:
+            return
+        # Le nouveau document remplace les anciens pour toutes les exigences qu'il couvre.
+        _, erreurs = corrections.remplacer_apres_depot(
+            self.projet.dossier, ligne.fournisseur, ligne.reference, fenetre.debut
+        )
+        self._signaler(erreurs)
+        self._recharger_et_reselectionner(ligne)
+
+    def _vider_reference(self, ligne: LigneSuivi):
+        plan = corrections.preparer_vidage(
+            self.projet.dossier,
+            self.projet.numero_dossier,
+            ligne.fournisseur,
+            ligne.reference,
+            ligne.livrable,
+        )
+        if plan.vide:
+            QtWidgets.QMessageBox.information(self, "Supprimer la référence", plan.message_rien())
+            return
+        if not self._oui("Supprimer la référence", plan.message_confirmation(), True):
+            return
+        echecs = corrections.vider(self.projet.dossier, plan)
+        if echecs:
+            QtWidgets.QMessageBox.warning(
+                self, "Suppression incomplète", corrections.message_echecs_vidage(echecs)
+            )
+        self._recharger_et_reselectionner(ligne)
+
+    def _recharger_et_reselectionner(self, ligne: LigneSuivi):
+        """Recharge le tableau puis réaffiche le détail de la même ligne."""
+        self.recharger()
+        cle = (ligne.fournisseur, ligne.reference, ligne.livrable)
+        fraiche = next(
+            (
+                lg
+                for lg in self._toutes_les_lignes
+                if (lg.fournisseur, lg.reference, lg.livrable) == cle
+            ),
+            None,
+        )
+        if fraiche:
+            self._sur_ligne_selectionnee(fraiche)

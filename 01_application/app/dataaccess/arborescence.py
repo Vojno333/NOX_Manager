@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import os
 import shutil
+import subprocess
+import sys
 from collections.abc import Iterable
 from pathlib import Path
 
@@ -187,3 +189,13 @@ def statistiques_disque(dossier_projet: Path) -> tuple[int, int]:
         except OSError:
             continue
     return nb_documents, taille
+
+
+def ouvrir_avec_l_application(chemin: Path) -> None:
+    """Ouvre le fichier avec l'application associée du poste."""
+    if sys.platform.startswith("win"):
+        os.startfile(str(chemin))  # noqa: S606 — chemin d'un document du projet
+    elif sys.platform == "darwin":
+        subprocess.run(["open", str(chemin)], check=False)  # noqa: S603, S607
+    else:
+        subprocess.run(["xdg-open", str(chemin)], check=False)  # noqa: S603, S607
