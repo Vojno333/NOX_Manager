@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 — Réaliser (prochaine tâche : 8)
+- Étape en cours : R8 — Réaliser (prochaine tâche : 9)
 - Dernière mise à jour : 2026-10-28
 
 ## Fait
