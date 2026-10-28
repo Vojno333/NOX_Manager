@@ -151,7 +151,6 @@ def contenus(projet: Projet, enrs: list[Enregistrement] | None = None) -> list[C
     infos = _infos_lignes(projet)
     couples = couples_a_exporter(projet)
     numero = projet.numero_dossier
-    affaire = str(projet.donnees.get("project_name", numero))
     resultat = []
     for livrable in LIVRABLES:
         if livrable not in projet.livrables:
@@ -164,8 +163,9 @@ def contenus(projet: Projet, enrs: list[Enregistrement] | None = None) -> list[C
             ContenuExport(
                 livrable=livrable,
                 sortie=chemin_export(projet, livrable),
-                titre=f"BASE DE DONNEES {livrable} - {affaire}",
-                onglet=f"BDD {livrable} {affaire}",
+                # E9 : titre et onglet au numéro de dossier.
+                titre=f"BASE DE DONNEES {livrable} - {numero}",
+                onglet=f"BDD {livrable} {numero}",
                 lignes=lignes,
             )
         )
