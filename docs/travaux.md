@@ -37,7 +37,7 @@ Tests : 4 et 5 — lecture de `tests/reference/projet_essai` (ACME / REF-001 ave
 | # | Tâche | Dépend de | Règles | Fait |
 |---|---|---|---|---|
 | 8 | **Applicabilité.** `services/applicabilite.py` : normalisation et correspondance des codes, alias RoHS, état d'une exigence d'après le dernier enregistrement, enregistrement « avec fichier », document valant pour un livrable (RoHS commun), estimation repérée au nom du fichier. | 4, 5 | R14, R15, R16, R18 | ☑ |
-| 9 | **Créer, modifier, supprimer un projet.** `services/projets.py` : contrôles et messages, découpage de l'import en masse, modèle CSV, création de la structure, retrait d'articles avec suppression ou conservation des dossiers et données, retrait des récents, suppression définitive. | 4, 5, 6, 7 | R1, R2, R4, R5, R6, R29 | ☐ |
+| 9 | **Créer, modifier, supprimer un projet.** `services/projets.py` : contrôles et messages, découpage de l'import en masse, modèle CSV, création de la structure, retrait d'articles avec suppression ou conservation des dossiers et données, retrait des récents, suppression définitive. | 4, 5, 6, 7 | R1, R2, R4, R5, R6, R29 | ☑ |
 
 Sources : 8 ← `document_rules.py`, `project_dashboard_window.py` (`_doc_applies_to_type`, `_compute_requirement_score`). 9 ← `new_project_dialog.py` (`_validate`, `_parse_bulk_lines`, `_split_bulk_column`, `_import_bulk_rows`, `_download_bulk_template`, `_create_project`, `_update_project`), `home_window.py` (`_delete_selected_project`).
 Tests : 8 — N/A puis Applicable → Applicable ; « 1907/2006 \| REACh » = « 1907/2006 ». 9 — S1, S2, S4, S5 ; chaque message refusé à l'identique.

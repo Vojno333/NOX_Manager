@@ -129,6 +129,10 @@ def supprimer_dossiers_article(
             shutil.rmtree(dossier_fournisseur, ignore_errors=True)
 
 
+def ecrire_texte(chemin: Path, contenu: str, encodage: str = "utf-8") -> None:
+    chemin.write_text(contenu, encoding=encodage)
+
+
 def dossier_non_vide(dossier: Path) -> bool:
     return dossier.exists() and any(dossier.iterdir())
 
