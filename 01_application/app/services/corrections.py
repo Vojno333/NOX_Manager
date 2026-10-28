@@ -42,7 +42,7 @@ def detacher_et_supprimer(dossier: Path, enr: Enregistrement) -> tuple[str | Non
     return enr.nom_stocke or Path(chemin).name, None
 
 
-# ── Justificatif d'une exigence (R21, R22) ──
+# ── Justificatif d'une exigence (R21, E6) ──
 def documents_justifiant(
     dossier: Path,
     fournisseur: str,
@@ -105,14 +105,27 @@ def retirer_exigences(
     return supprimes, erreurs
 
 
+def message_remplacement(codes: list[str]) -> str | None:
+    """Alerte quand le remplacement porte sur plusieurs exigences (E6)."""
+    if len(codes) < 2:
+        return None
+    return (
+        f"Le nouveau document remplacera l'ancien pour les {len(codes)} exigences "
+        "sélectionnées :\n\n" + "\n".join(f"• {c}" for c in codes) + "\n\nContinuer ?"
+    )
+
+
 def remplacer_apres_depot(
-    dossier: Path, fournisseur: str, reference: str, debut: str
+    dossier: Path, fournisseur: str, reference: str, debut: str, selection: list[str]
 ) -> tuple[list[str], list[str]]:
-    """Après un dépôt de remplacement commencé à `debut` : les anciens documents
-    ne justifient plus aucune des exigences couvertes par le nouveau (R22)."""
+    """Après un dépôt de remplacement commencé à `debut` : les anciens documents ne
+    justifient plus les exigences sélectionnées que le nouveau couvre (E6).
+
+    Les autres exigences de l'ancien document restent justifiées par lui.
+    """
     avec_fichier = [e for e in _de_l_article(dossier, fournisseur, reference) if e.a_un_fichier]
     nouveaux = [e for e in avec_fichier if (e.depose_le or "") >= debut]
-    codes = [c for e in nouveaux for c in e.codes_couverts]
+    codes = [code for code in selection if any(ap.couvre(e, code) for e in nouveaux)]
     livrables = {str(e.livrable_source).upper() for e in nouveaux}
     anciens = [
         e
