@@ -25,6 +25,8 @@ class Enregistrement:
     codes_na: list[str] = field(default_factory=list)
     libelles_na: list[str] = field(default_factory=list)
     codes_applicables: list[str] = field(default_factory=list)
+    # E1 : ligne de l'article ; vide = première ligne du couple (décision 0005).
+    id_ligne: str = ""
     id: int | None = None
 
     @property
@@ -50,5 +52,6 @@ class Enregistrement:
             codes_na=list(d.get("not_applicable_codes") or []),
             libelles_na=list(d.get("not_applicable_labels") or []),
             codes_applicables=list(d.get("applicable_codes") or []),
+            id_ligne=str(d.get("line_id", "") or ""),
             id=d.get("id"),
         )

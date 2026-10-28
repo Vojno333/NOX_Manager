@@ -75,3 +75,14 @@ def construire_projet_essai(racine):
 @pytest.fixture
 def projet_essai(tmp_path):
     return construire_projet_essai(tmp_path / "projet_essai")
+
+
+@pytest.fixture
+def lignes_multiples():
+    """Active E1 (décision 0005) le temps d'un test."""
+    from app.core.config import reglages
+
+    avant = reglages().get("lignes_multiples", False)
+    reglages()["lignes_multiples"] = True
+    yield
+    reglages()["lignes_multiples"] = avant

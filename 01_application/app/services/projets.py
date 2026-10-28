@@ -12,11 +12,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from app.core.config import reglages
+from app.core.config import lignes_multiples, reglages
 from app.dataaccess import arborescence, base_projet, projet_fichier
 from app.dataaccess.etat_utilisateur import EtatUtilisateur
 from app.models.projet import Article, Projet
 from app.models.referentiel import LIVRABLES
+from app.services import lignes as regles_lignes
 
 MODELE_CSV = (
     "Fournisseur;Reference;Libelle;MNP;N_commande\n"
@@ -135,8 +136,11 @@ def dossier_existant_non_vide(emplacement: str) -> bool:
     return arborescence.dossier_non_vide(Path(emplacement.strip()))
 
 
-def _couples(lignes: list[Article]) -> list[tuple[str, str]]:
-    return [(a.fournisseur, a.reference) for a in lignes if ligne_renseignee(a)]
+def _couples(lignes: list[Article]) -> list[tuple[str, str, str]]:
+    """(fournisseur, référence, sous-dossier de la ligne) pour la structure (R5, E1)."""
+    lignes = [a for a in lignes if ligne_renseignee(a)]
+    sous = arborescence.sous_dossiers(lignes) if lignes_multiples() else [""] * len(lignes)
+    return [(a.fournisseur, a.reference, s) for a, s in zip(lignes, sous, strict=True)]
 
 
 def creer_projet(saisie: SaisieProjet, etat: EtatUtilisateur) -> Projet:
@@ -157,9 +161,51 @@ def creer_projet(saisie: SaisieProjet, etat: EtatUtilisateur) -> Projet:
 
 
 def articles_retires(projet: Projet, lignes: list[Article]) -> list[Article]:
-    """Articles du projet qui ne figurent plus dans la nouvelle saisie (R6)."""
-    gardes = {a.cle for a in lignes if a.fournisseur and a.reference}
+    """Lignes du projet qui ne figurent plus dans la nouvelle saisie (R6).
+
+    Avec les lignes multiples (E1), une ligne est reconnue à son identifiant.
+    """
+    lignes = [a for a in lignes if a.fournisseur and a.reference]
+    if lignes_multiples():
+        ids = {a.id_ligne for a in lignes if a.id_ligne}
+        contenus = {a.contenu for a in lignes}
+        return [
+            a
+            for a in projet.articles
+            if ((a.id_ligne not in ids) if a.id_ligne else (a.contenu not in contenus))
+        ]
+    gardes = {a.cle for a in lignes}
     return [a for a in projet.articles if a.cle not in gardes]
+
+
+def _supprimer_donnees_des_lignes(projet: Projet, retires: list[Article], numero: str) -> None:
+    """Dossiers et enregistrements des lignes retirées (R6, E1).
+
+    Un article entièrement retiré perd tout ; une ligne retirée d'un article
+    qui en garde d'autres ne perd que ses propres enregistrements et son
+    sous-dossier.
+    """
+    restants = [a for a in projet.articles if a not in retires]
+    entiers = []
+    for a in retires:
+        if any(r.cle == a.cle for r in restants):
+            enrs = base_projet.lire_tous(projet.dossier)
+            ids = [e.id for e in enrs if regles_lignes.appartient(e, projet, a)]
+            base_projet.supprimer(projet.dossier, ids)
+            nom = regles_lignes.sous_dossier(projet, a)
+            if nom:
+                for livrable in LIVRABLES:
+                    cible = arborescence.dossier_documents(
+                        projet.dossier, livrable, numero, a.fournisseur, a.reference, nom
+                    )
+                    arborescence.supprimer_dossier(cible)
+        elif a.cle not in [e.cle for e in entiers]:
+            entiers.append(a)
+    for a in entiers:
+        arborescence.supprimer_dossiers_article(
+            projet.dossier, numero, LIVRABLES, a.fournisseur, a.reference
+        )
+    base_projet.supprimer_pour_articles(projet.dossier, [a.cle for a in entiers])
 
 
 def modifier_projet(
@@ -170,12 +216,7 @@ def modifier_projet(
     numero = saisie.numero_dossier.strip().upper()
     lignes = [a for a in saisie.lignes if ligne_renseignee(a)]
     if supprimer_les_retires:
-        retires = articles_retires(projet, lignes)
-        for a in retires:
-            arborescence.supprimer_dossiers_article(
-                projet.dossier, numero, LIVRABLES, a.fournisseur, a.reference
-            )
-        base_projet.supprimer_pour_articles(projet.dossier, [a.cle for a in retires])
+        _supprimer_donnees_des_lignes(projet, articles_retires(projet, lignes), numero)
     arborescence.creer_structure(projet.dossier, numero, saisie.livrables, _couples(lignes))
     projet.nom = saisie.nom.strip()
     projet.numero_dossier = numero

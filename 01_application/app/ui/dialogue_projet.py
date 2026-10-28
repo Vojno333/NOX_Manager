@@ -102,6 +102,7 @@ class ReferenceRow(QtWidgets.QFrame):
             "label": self.label_edit.text().strip(),
             "mnp": self.mnp_edit.text().strip(),
             "order_number": self.order_edit.text().strip(),
+            "line_id": getattr(self, "line_id", ""),
         }
 
     def clear_data(self):
@@ -768,6 +769,7 @@ class DialogueProjet(QtWidgets.QDialog):
             row.label_edit.setText(data.get("label", ""))
             row.mnp_edit.setText(data.get("mnp", ""))
             row.order_edit.setText(data.get("order_number", ""))
+            row.line_id = data.get("line_id", "")  # E1 : identifiant de la ligne
 
         self._rows.append(row)
         self._rows_layout.addWidget(row)

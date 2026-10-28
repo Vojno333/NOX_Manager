@@ -30,16 +30,18 @@ _CREATION = """
         uploaded_at TEXT NOT NULL,
         not_applicable_codes_json TEXT NOT NULL DEFAULT '[]',
         not_applicable_labels_json TEXT NOT NULL DEFAULT '[]',
-        applicable_codes_json TEXT NOT NULL DEFAULT '[]'
+        applicable_codes_json TEXT NOT NULL DEFAULT '[]',
+        line_id TEXT NOT NULL DEFAULT ''
     )
 """
 
 # Colonnes ajoutées après coup : migration tolérante des anciennes bases.
-_COLONNES_AJOUTEES = (
-    "not_applicable_codes_json",
-    "not_applicable_labels_json",
-    "applicable_codes_json",
-)
+_COLONNES_AJOUTEES = {
+    "not_applicable_codes_json": "'[]'",
+    "not_applicable_labels_json": "'[]'",
+    "applicable_codes_json": "'[]'",
+    "line_id": "''",  # E1, décision 0005
+}
 
 # Attribut de l'enregistrement → colonne. Liste fermée : seuls ces noms
 # entrent dans une requête.
@@ -58,6 +60,7 @@ _COLONNES = {
     "codes_na": "not_applicable_codes_json",
     "libelles_na": "not_applicable_labels_json",
     "codes_applicables": "applicable_codes_json",
+    "id_ligne": "line_id",
 }
 LISTES_DE_CODES = (
     "codes_couverts",
@@ -88,11 +91,11 @@ def initialiser(dossier: Path) -> None:
     conn = _ouvrir(dossier)
     try:
         conn.execute(_CREATION)
-        for colonne in _COLONNES_AJOUTEES:
+        for colonne, defaut in _COLONNES_AJOUTEES.items():
             try:
                 conn.execute(
                     f"ALTER TABLE uploaded_documents ADD COLUMN {colonne} "  # noqa: S608 — nom fixe
-                    "TEXT NOT NULL DEFAULT '[]'"
+                    f"TEXT NOT NULL DEFAULT {defaut}"
                 )
             except sqlite3.OperationalError:
                 pass
