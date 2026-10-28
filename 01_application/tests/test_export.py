@@ -85,3 +85,11 @@ def test_e9_titre_et_onglet_au_numero_de_dossier(projet_essai):
         livrable = chemin.name.split("_")[1]
         assert releve["onglet"] == f"BDD {livrable} N999"
         assert releve["cellules"]["B2"]["valeur"] == f"BASE DE DONNEES {livrable} - N999"
+
+
+def test_e11_chaque_export_pointe_vers_son_dossier(projet_essai):
+    exports = {c.name: relever(c, projet_essai) for c, _ in export.exporter(projet_essai)}
+    lien_ce = exports["BDD_CE_N999.xlsx"]["cellules"]["J7"]["lien"]
+    lien_dpe = exports["BDD_DPE_N999.xlsx"]["cellules"]["H7"]["lien"]
+    assert lien_ce == "<PROJET>/BDD CE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
+    assert lien_dpe == "<PROJET>/BDD DPE N999/Documents/BETA/REF-010/DPE_BETA_REF-010.pdf"
