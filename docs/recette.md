@@ -107,6 +107,6 @@ S1 à S10 et S27 conformes à la main ; S11 à S26 couverts par les tests automa
 | V5 | E7 | BETA / REF-010 CE : « Supprimer la référence » | La confirmation signale la copie RoHS du DPE ; après : CE à 0 %, la copie RoHS a disparu de `BDD DPE N999\…\BETA\REF-010\`, BETA / REF-010 DPE perd RoHS | | |
 | V6 | E8, E9, E11, E13 | Exporter, ouvrir les Excel | Titre « BASE DE DONNEES CE - N999 », onglet « BDD CE N999 » ; CECC : D = MNP de l'article, H = MPN de la fiche ; liens cliquables, qui marchent encore après avoir copié tout `evolutions` ailleurs | | |
 | V7 | E14 | Ouvrir `evolutions_verrou` | Message « Projet ouvert en modification par collegue.test sur le poste PC-COLLEGUE… » ; titre « — lecture seule » ; boutons de modification grisés ; Ouvrir un document et Exporter possibles | | |
-| V8 | E14 | Ouvrir `evolutions` deux fois (deux exécutables lancés) | Le second est en lecture seule, au nom de ton propre poste ; après fermeture du premier, le réouvrir : modification possible | | |
+| V8 | E14 | Ouvrir `evolutions`, regarder dans son dossier `.nox`, puis fermer la fenêtre du projet | Pendant l'ouverture : un fichier `verrou.json` ; après la fermeture : il a disparu | | |
 | V9 | E1 | Avec `NOX_Manager_E1`, ouvrir `evolutions_E1` | ACME / REF-001 apparaît sur deux lignes (CMD-1 à 67 %, CMD-1B à 0 %) | | |
 | V10 | E1 | Importer `rapport.pdf` pour la ligne CMD-1B en CE, puis exporter | Fichier rangé dans `…\ACME\REF-001\CMD-1B\` ; CMD-1 reste à 67 % ; l'Excel CE a deux lignes REF-001 (CMD-1 et CMD-1B) | | |
