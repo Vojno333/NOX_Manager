@@ -4,7 +4,7 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 terminée — tâches faites, évolutions recettées ; suite : livraison
+- Étape en cours : R8 terminée — version v2.0 étiquetée et publiée sur GitHub ; suite : livraison
 - Dernière mise à jour : 2026-10-29
 
 ## Fait
@@ -30,6 +30,7 @@
 
 - Évolutions faites le 2026-10-28 (une branche et un commit par tâche, référence `attendu/` mise à jour dans la tâche) : E5 (25), E8 (26), E2 (27), E6 (28), E9 (29), E3 (30), E7 (31, corrige l'écart M3 de la recette), E11 (33), E4 (34), E13 (35), E10 (36), E14 (24, décision 0004 : lecture seule stricte), E12 (32), E1 (37–38, décision 0005 : désactivée par défaut, interrupteur `lignes_multiples`). 140 tests au vert.
 - Recette des évolutions le 2026-10-29 (`docs/recette.md`, section 8, V1–V10) : tout conforme. Un défaut trouvé en V4 (E6, clic droit « Remplacer ») corrigé par la tâche 39 (`dev/fix/39`). E1 jouée avec une copie de l'exécutable (`Recette NOX\NOX_Manager_E1`). 141 tests au vert.
+- Tâche 40 (2026-10-29) : E1 livrée activée (décision 0005, avenant, choix de l'utilisateur), tests indépendants du réglage livré, ancienne documentation Obsidian retirée (récupérable au commit 0458da5). Étiquette `v2.0`. Publication sur GitHub par la branche `dev/story/40` et une demande de fusion vers `main` à ouvrir par l'utilisateur (AGENTS §6 : pas de push direct sur `main` ni `develop`). 142 tests au vert.
 
 ## Reste à faire
 - Livraison par le référent technique (`docs/livraison.md`) : diffusion poste par poste par l'utilisateur, E1 activée (décision 0005, avenant du 2026-10-29) ; version v2.0.
@@ -49,7 +50,7 @@
 - aucune
 
 ## À ne pas oublier
-- Commits autorisés le 2026-10-28. Étiquette `v1-avant-refonte` posée sur d7f13be, reprise commitée sur `develop` (`uv.lock` versionné). Chaque tâche est fusionnée localement dans `develop` (choix de l'utilisateur) ; rien n'est poussé sur GitHub.
+- Commits autorisés le 2026-10-28. Étiquette `v1-avant-refonte` posée sur d7f13be, reprise commitée sur `develop` (`uv.lock` versionné). Chaque tâche est fusionnée localement dans `develop` (choix de l'utilisateur). Premier envoi sur GitHub le 2026-10-29, à la demande de l'utilisateur : branche `dev/story/40` et étiquette `v2.0`.
 - Liste des pays (menu CECC) : Algérie, Belgique et Chine y figurent deux fois. Reprise à l'identique ; à proposer en évolution.
 - Faire remonter au responsable de la méthode le besoin d'une option « application de bureau » dans le catalogue (décision 0002).
 - Contrôles automatiques : le workflow GitHub ne tournera qu'au premier envoi sur GitHub (rien n'est poussé pour l'instant). La référence (projet reconstruit) y est jouée avec les tests.

@@ -108,7 +108,7 @@ Sources : 21 ← `00_ancien/NOX_Manager.spec`, `qt_main.py`, `Documentation/02 -
 | 15 | 37 | **E1 (1/2)** Lignes multiples d'un même article : identifiant de ligne, rangement en sous-dossiers, enregistrements rattachés à la ligne | 23, décision à écrire | `models/`, `dataaccess/`, `services/projets.py` | ☑ |
 | 16 | 38 | **E1 (2/2)** Lignes multiples : tableau de suivi, dépôt, corrections, export | 37 | `services/`, `ui/` | ☑ |
 | — | 39 | *Défaut de recette V4* : E6, le clic droit « Remplacer » ne s'ouvrait que sur la colonne du document ; Ctrl + clic sur un document l'ouvrait au lieu de le sélectionner | 28 | `ui/panneau_detail.py` | ☑ |
-| — | 40 | *Livraison v2.0* : E1 livrée activée (décision 0005, avenant), tests indépendants du réglage livré, ménage du dépôt, étiquette `v2.0` | 38, 39 | `config.json`, `tests/conftest.py`, `docs/` | ☐ |
+| — | 40 | *Livraison v2.0* : E1 livrée activée (décision 0005, avenant), tests indépendants du réglage livré, ménage du dépôt, étiquette `v2.0` | 38, 39 | `config.json`, `tests/conftest.py`, `docs/` | ☑ |
 
 ## Couverture des règles
 
