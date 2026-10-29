@@ -6,5 +6,5 @@
   "articles_max": 1000,
   "verrou_rafraichissement_minutes": 2,
   "verrou_peremption_minutes": 15,
-  "lignes_multiples": false
+  "lignes_multiples": true
 }

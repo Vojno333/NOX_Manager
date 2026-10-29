@@ -204,3 +204,30 @@ def test_e1_tableau_et_dialogue(lignes_multiples, projet_essai):
     # La 2e ligne n'a encore rien : toutes ses exigences sont « Non défini ».
     assert all(row.is_undefined() for row in dialogue._ce_page._req_rows)
     fenetre.close()
+
+
+def test_e1_sans_doublon_meme_resultat(projet_essai):
+    """E1 activée sur un projet sans doublon (cas des projets existants) :
+    mêmes complétions et mêmes exports qu'avec E1 désactivée."""
+    from app.core.config import reglages
+    from app.services import completion, export
+    from tests.test_export import relever
+
+    fichier = projet_fichier.chemin_fichier_projet(projet_essai)
+    brut = json.loads(fichier.read_text("utf-8"))
+    brut["rows"] = [r for r in brut["rows"] if r.get("order_number") != "CMD-1B"]
+    fichier.write_text(json.dumps(brut, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    def releve():
+        projet = projet_fichier.lire_projet(projet_essai)
+        suivi = [
+            (lg.fournisseur, lg.reference, lg.livrable, lg.completion_texte)
+            for lg in completion.lignes_de_suivi(projet)
+        ]
+        exports = {c.name: relever(c, projet_essai) for c, _ in export.exporter(projet_essai)}
+        return suivi, exports
+
+    sans = releve()
+    reglages()["lignes_multiples"] = True
+    avec = releve()
+    assert avec == sans

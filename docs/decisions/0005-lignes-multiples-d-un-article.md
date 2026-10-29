@@ -18,3 +18,12 @@ E1 : la ligne entière (fournisseur, référence, libellé, MNP, n° de commande
 
 - Passer l'interrupteur à `true` alors qu'un poste utilise encore l'ancienne application expose à la perte des lignes en double si ce poste réenregistre le paramétrage du projet.
 - `project_file_version` reste 3 : la clé `line_id` est ignorée par l'ancienne application.
+
+## Avenant du 2026-10-29 : livrée activée
+
+*Décision de l'utilisateur, après la recette des évolutions (V9, V10 conformes).*
+
+- L'interrupteur est livré à `true` dans `config.json`. Raison : aucun projet n'a de doublon aujourd'hui, et au moment de la diffusion plus aucun poste n'aura l'ancienne application ; la condition d'activation est donc remplie dès la livraison.
+- Garde-fou : sur un projet sans doublon (tous les projets existants), E1 activée donne les mêmes complétions et les mêmes exports qu'E1 désactivée (`test_e1_sans_doublon_meme_resultat`).
+- Consigne : ne plus lancer l'ancienne application sur un projet dès qu'un poste a la nouvelle version. Si un poste devait la garder, ne jamais y modifier le paramétrage d'un projet (risque décrit ci-dessus).
+- Les tests ne dépendent pas du réglage livré : E1 y est désactivée par défaut (référence R3) et activée dans ses propres tests.

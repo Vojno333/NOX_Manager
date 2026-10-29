@@ -77,6 +77,19 @@ def projet_essai(tmp_path):
     return construire_projet_essai(tmp_path / "projet_essai")
 
 
+@pytest.fixture(autouse=True)
+def sans_lignes_multiples():
+    """Les tests ne dépendent pas du réglage livré dans `config.json` : E1 est
+    désactivée par défaut (référence R3, projet d'essai avec un doublon), et
+    activée par la fixture `lignes_multiples` dans ses propres tests."""
+    from app.core.config import reglages
+
+    avant = reglages().get("lignes_multiples", False)
+    reglages()["lignes_multiples"] = False
+    yield
+    reglages()["lignes_multiples"] = avant
+
+
 @pytest.fixture
 def lignes_multiples():
     """Active E1 (décision 0005) le temps d'un test."""

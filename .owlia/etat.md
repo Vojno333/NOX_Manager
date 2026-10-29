@@ -32,7 +32,7 @@
 - Recette des évolutions le 2026-10-29 (`docs/recette.md`, section 8, V1–V10) : tout conforme. Un défaut trouvé en V4 (E6, clic droit « Remplacer ») corrigé par la tâche 39 (`dev/fix/39`). E1 jouée avec une copie de l'exécutable (`Recette NOX\NOX_Manager_E1`). 141 tests au vert.
 
 ## Reste à faire
-- Livraison par le référent technique (`docs/livraison.md`) : diffusion poste par poste par l'utilisateur ; quand plus aucun poste n'a l'ancienne application, passer `lignes_multiples` à `true` partout.
+- Livraison par le référent technique (`docs/livraison.md`) : diffusion poste par poste par l'utilisateur, E1 activée (décision 0005, avenant du 2026-10-29) ; version v2.0.
 
 ## Écarts et constats relevés pendant la reconstruction (à valider en recette)
 - **R7, fichier glissé-déposé** : l'ancienne application ne contrôlait le format que dans le sélecteur de fichier ; un fichier glissé passait sans contrôle. Le contrôle est maintenant fait aussi au dépôt (R7 et AGENTS §7).

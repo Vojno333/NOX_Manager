@@ -37,7 +37,7 @@ Toute nouvelle ressource lue à l'exécution va dans `ressources/`, et `app.core
 
 | Réglage | Valeur livrée | Rôle |
 |---|---|---|
-| `lignes_multiples` | `false` | E1, décision 0005. À passer à `true` **sur tous les postes en même temps**, une fois que plus aucun poste n'utilise l'ancienne application : un même article peut alors figurer sur plusieurs lignes. |
+| `lignes_multiples` | `true` | E1, décision 0005 (avenant du 2026-10-29) : un même article peut figurer sur plusieurs lignes. Livrée activée : l'ancienne application ne doit plus être utilisée sur aucun poste. `false` revient au comportement R3 (le premier gagne). |
 | `verrou_rafraichissement_minutes` | `2` | E14, décision 0004 : fréquence du signe de vie d'un projet ouvert en modification. |
 | `verrou_peremption_minutes` | `15` | E14 : au-delà, un verrou sans signe de vie (poste planté) est abandonné. |
 
