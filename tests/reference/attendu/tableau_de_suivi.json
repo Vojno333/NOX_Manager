@@ -1,0 +1,171 @@
+{
+  "lignes": [
+    {
+      "supplier": "ACME",
+      "reference": "REF-001",
+      "label": "Vis inox M6",
+      "mnp": "MNP-001",
+      "order_number": "CMD-1",
+      "type": "CE",
+      "completion": "67 %"
+    },
+    {
+      "supplier": "ACME",
+      "reference": "REF-001",
+      "label": "Vis inox M6",
+      "mnp": "MNP-001",
+      "order_number": "CMD-1",
+      "type": "CECC",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "ACME",
+      "reference": "REF-001",
+      "label": "Vis inox M6",
+      "mnp": "MNP-001",
+      "order_number": "CMD-1",
+      "type": "DPE",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "ACME",
+      "reference": "REF-002",
+      "label": "Écrou frein",
+      "mnp": "MNP-002",
+      "order_number": "CMD-2",
+      "type": "CE",
+      "completion": "50 %"
+    },
+    {
+      "supplier": "ACME",
+      "reference": "REF-002",
+      "label": "Écrou frein",
+      "mnp": "MNP-002",
+      "order_number": "CMD-2",
+      "type": "CECC",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "ACME",
+      "reference": "REF-002",
+      "label": "Écrou frein",
+      "mnp": "MNP-002",
+      "order_number": "CMD-2",
+      "type": "DPE",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "BETA",
+      "reference": "REF-010",
+      "label": "Moteur 24V",
+      "mnp": "MNP-010",
+      "order_number": "CMD-10",
+      "type": "CE",
+      "completion": "20 %"
+    },
+    {
+      "supplier": "BETA",
+      "reference": "REF-010",
+      "label": "Moteur 24V",
+      "mnp": "MNP-010",
+      "order_number": "CMD-10",
+      "type": "CECC",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "BETA",
+      "reference": "REF-010",
+      "label": "Moteur 24V",
+      "mnp": "MNP-010",
+      "order_number": "CMD-10",
+      "type": "DPE",
+      "completion": "50 %"
+    },
+    {
+      "supplier": "DELTA",
+      "reference": "REF-030",
+      "label": "Câble",
+      "mnp": "MNP-030",
+      "order_number": "CMD-30",
+      "type": "CE",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "DELTA",
+      "reference": "REF-030",
+      "label": "Câble",
+      "mnp": "MNP-030",
+      "order_number": "CMD-30",
+      "type": "CECC",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "DELTA",
+      "reference": "REF-030",
+      "label": "Câble",
+      "mnp": "MNP-030",
+      "order_number": "CMD-30",
+      "type": "DPE",
+      "completion": "100 %"
+    },
+    {
+      "supplier": "EPS",
+      "reference": "REF-040",
+      "label": "Capot",
+      "mnp": "",
+      "order_number": "",
+      "type": "CE",
+      "completion": "100 %"
+    },
+    {
+      "supplier": "EPS",
+      "reference": "REF-040",
+      "label": "Capot",
+      "mnp": "",
+      "order_number": "",
+      "type": "CECC",
+      "completion": "100 %"
+    },
+    {
+      "supplier": "EPS",
+      "reference": "REF-040",
+      "label": "Capot",
+      "mnp": "",
+      "order_number": "",
+      "type": "DPE",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "GAMMA",
+      "reference": "REF-020",
+      "label": "Carte E/S",
+      "mnp": "MNP-020",
+      "order_number": "CMD-20",
+      "type": "CE",
+      "completion": "0 %"
+    },
+    {
+      "supplier": "GAMMA",
+      "reference": "REF-020",
+      "label": "Carte E/S",
+      "mnp": "MNP-020",
+      "order_number": "CMD-20",
+      "type": "CECC",
+      "completion": "100 %"
+    },
+    {
+      "supplier": "GAMMA",
+      "reference": "REF-020",
+      "label": "Carte E/S",
+      "mnp": "MNP-020",
+      "order_number": "CMD-20",
+      "type": "DPE",
+      "completion": "0 %"
+    }
+  ],
+  "indicateurs": {
+    "CE": "39 %",
+    "CECC": "33 %",
+    "DPE": "25 %"
+  }
+}

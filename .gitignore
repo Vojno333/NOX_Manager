@@ -1,12 +1,13 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
 
-# PyInstaller
+# PyInstaller (le .spec, lui, est versionné : décision 0002)
 build/
 dist/
-*.spec
 
 # Runtime
 runtime/
@@ -14,7 +15,13 @@ runtime/
 # Bases locales
 *.db
 *.sqlite
+*.sqlite3
 *.nox
+.env
+
+# Projet d'essai régénéré par tests/reference/construire_reference.py
+# (seuls les résultats attendus, dans attendu/, sont versionnés)
+tests/reference/projet_essai/
 
 # Exports
 exports/

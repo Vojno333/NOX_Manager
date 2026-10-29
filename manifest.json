@@ -1,0 +1,12 @@
+{
+  "slug": "nox-manager",
+  "nom": "NOX Manager",
+  "description": "Constitution et suivi des dossiers de justificatifs de conformité (CE, DPE, CECC) par article de projet, et production des tableaux Excel récapitulatifs.",
+  "version": "0.1.0",
+  "palier": "P2",
+  "roles": ["utilisateur"],
+  "frontend_owner": null,
+  "suivi": "interne",
+  "methode": "1.0",
+  "hors_catalogue": "application de bureau PySide6 (décision 0002)"
+}
