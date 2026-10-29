@@ -23,7 +23,7 @@ Rien d'autre à installer que `uv`.
 
 ## Reprise
 
-La reconstruction à l'identique est terminée et recettée (`docs/recette.md`). L'ancienne application reste dans l'historique Git sous l'étiquette `v1-avant-refonte`. Les évolutions sont listées dans `docs/travaux.md`.
+La reconstruction à l'identique est terminée et recettée (`docs/recette.md`). L'ancienne application reste dans l'historique Git sous l'étiquette `v1-avant-refonte`, et son ancienne documentation Obsidian au commit `0458da5`. Les évolutions sont listées dans `docs/travaux.md`.
 
 ## Où se trouve quoi
 

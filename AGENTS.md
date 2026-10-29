@@ -8,7 +8,7 @@ Ces règles s'appliquent à chaque session, sans être invoquées. Elles ne se d
 - **Objet** : constituer et suivre les dossiers de justificatifs de conformité (CE, DPE, CECC) par article de projet, et produire les tableaux Excel récapitulatifs
 - **Échanges** : aucun ; les données vivent dans le dossier de chaque projet sur le partage réseau (décision 0003)
 
-**Reprise terminée** (recette du 2026-10-28, `docs/recette.md`) : l'ancienne application n'est plus dans le dossier ; elle reste dans l'historique Git sous l'étiquette `v1-avant-refonte` (`git show v1-avant-refonte:wikidocs_qt/<fichier>`). Les docstrings du code citent leur source sous cette forme. Chaque évolution (E1–E14) change volontairement un résultat : elle met à jour `tests/reference/attendu/` dans sa propre tâche, en le disant dans le commit.
+**Reprise terminée** (recette du 2026-10-28, `docs/recette.md`) : l'ancienne application n'est plus dans le dossier ; elle reste dans l'historique Git sous l'étiquette `v1-avant-refonte` (`git show v1-avant-refonte:wikidocs_qt/<fichier>`). Son ancienne documentation Obsidian aussi (`git show 0458da5:"Documentation/<fichier>"`). Les docstrings du code citent leur source sous cette forme. Chaque évolution (E1–E14) change volontairement un résultat : elle met à jour `tests/reference/attendu/` dans sa propre tâche, en le disant dans le commit.
 
 ## 2. Avant de générer du code
 
