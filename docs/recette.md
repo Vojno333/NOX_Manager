@@ -87,3 +87,26 @@ S1 à S10 et S27 conformes à la main ; S11 à S26 couverts par les tests automa
 ## Écarts constatés
 
 - **M3 / S21** : vider un article dans un livrable laisse la copie RoHS de l'autre livrable, qui continue de compter (BETA / REF-010 CE à 20 %). Comportement de l'ancienne application, refusé par l'utilisateur : corrigé par **E7** (tâche 31, faite le 2026-10-28) : vider retire aussi le justificatif RoHS de l'autre livrable, dossier et affichage, en gardant son applicabilité.
+
+## 8. Recette des évolutions E1 à E14 (allégée)
+
+*Ouverte le 2026-10-29. Chaque évolution est couverte par les tests automatiques ; la recette manuelle vérifie à l'écran ce qu'ils ne voient pas.*
+
+**Copies utilisées** (`C:\Users\vojnovic\Desktop\Recette NOX\`)
+- `evolutions` : projet d'essai neuf, ouvert avec `dist\NOX_Manager\NOX_Manager.exe` (E1 désactivée).
+- `evolutions_verrou` : le même, déjà tenu par « collegue.test » sur « PC-COLLEGUE » (E14).
+- `evolutions_E1` : le même, ouvert avec `Recette NOX\NOX_Manager_E1\NOX_Manager.exe` (copie de l'exécutable, `lignes_multiples` à `true`).
+- `fichiers` : `photo.png`, `mail.msg`, `notes.txt`, `rapport.pdf`, `script.exe`.
+
+| # | Évolution | Action | Attendu | Résultat | Remarque |
+|---|---|---|---|---|---|
+| V1 | E5, E12 | Ouvrir `evolutions` | ACME / REF-002 CE **50 %** (estimation = validé) ; EPS / REF-040 CECC **100 %** ; quelques secondes après l'ouverture, ⚠ sur DELTA / REF-030 DPE et « 1 document(s) introuvable(s) » en bas ; dans son détail, « ⚠ DPE_DELTA_REF-030.pdf (introuvable) » | | |
+| V2 | E2, E3 | Importer pour ACME / REF-002 CE, Parcourir : `photo.png` avec le nom « Photo capot », puis glisser `script.exe` | Le `.png` est accepté et rangé sous `Photo capot.png` ; le `.exe` est refusé | | |
+| V3 | E4, E10 | Importer pour ACME / REF-002 CECC | Fiche pré-remplie : fournisseur « ACME », MPN « MNP-002 » ; avec `rapport.pdf` et le nom CECC vide : refus | | |
+| V4 | E6 | ACME / REF-001 CE, détail : sélectionner deux exigences (Ctrl + clic), clic droit → « Remplacer le justificatif (2 exigences)… » | Alerte : le remplacement s'applique aux deux ; après dépôt, seules ces deux exigences changent de document | | |
+| V5 | E7 | BETA / REF-010 CE : « Supprimer la référence » | La confirmation signale la copie RoHS du DPE ; après : CE à 0 %, la copie RoHS a disparu de `BDD DPE N999\…\BETA\REF-010\`, BETA / REF-010 DPE perd RoHS | | |
+| V6 | E8, E9, E11, E13 | Exporter, ouvrir les Excel | Titre « BASE DE DONNEES CE - N999 », onglet « BDD CE N999 » ; CECC : D = MNP de l'article, H = MPN de la fiche ; liens cliquables, qui marchent encore après avoir copié tout `evolutions` ailleurs | | |
+| V7 | E14 | Ouvrir `evolutions_verrou` | Message « Projet ouvert en modification par collegue.test sur le poste PC-COLLEGUE… » ; titre « — lecture seule » ; boutons de modification grisés ; Ouvrir un document et Exporter possibles | | |
+| V8 | E14 | Ouvrir `evolutions` deux fois (deux exécutables lancés) | Le second est en lecture seule, au nom de ton propre poste ; après fermeture du premier, le réouvrir : modification possible | | |
+| V9 | E1 | Avec `NOX_Manager_E1`, ouvrir `evolutions_E1` | ACME / REF-001 apparaît sur deux lignes (CMD-1 à 67 %, CMD-1B à 0 %) | | |
+| V10 | E1 | Importer `rapport.pdf` pour la ligne CMD-1B en CE, puis exporter | Fichier rangé dans `…\ACME\REF-001\CMD-1B\` ; CMD-1 reste à 67 % ; l'Excel CE a deux lignes REF-001 (CMD-1 et CMD-1B) | | |
