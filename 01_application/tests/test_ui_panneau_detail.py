@@ -96,6 +96,22 @@ def test_e6_selection_de_plusieurs_exigences(app, projet_essai):
     assert fenetre.detail_panel.codes_selectionnes(2) == ["2011/65/UE"]
 
 
+def test_e6_clic_droit_sur_la_colonne_exigence(app, projet_essai):
+    """E6 : après une sélection de deux exigences, le clic droit sur n'importe
+    quelle colonne propose « Remplacer » ; rien sur une exigence sans document."""
+    fenetre = FenetreSuivi(projet_fichier.lire_projet(projet_essai))
+    fenetre._sur_ligne_selectionnee(_ligne(fenetre, "ACME", "REF-001", "CE"))
+    panneau = fenetre.detail_panel
+    table = panneau._tbl_docs
+    table.selectRow(0)
+    mode = table.selectionModel().SelectionFlag
+    table.selectionModel().select(table.model().index(4, 0), mode.Select | mode.Rows)
+    menu = panneau.menu_exigence(table.visualRect(table.model().index(4, 0)).center())
+    assert "Remplacer le justificatif (2 exigences)…" in [a.text() for a in menu.actions()]
+    table.clearSelection()
+    assert panneau.menu_exigence(table.visualRect(table.model().index(2, 0)).center()) is None
+
+
 def test_e12_fichier_disparu_signale(app, projet_essai):
     fenetre = FenetreSuivi(projet_fichier.lire_projet(projet_essai))
     introuvables = completion.documents_introuvables(fenetre.projet)

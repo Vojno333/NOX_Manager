@@ -381,7 +381,9 @@ class DetailPanel(QtWidgets.QFrame):
     # ── Slots ─────────────────────────────────────────────────────────────────
     def _on_doc_clicked(self, row: int, col: int):
         doc_col = 1 if self._tbl_docs.columnCount() == 2 else 2
-        if col != doc_col:
+        # Ctrl / Maj + clic : on sélectionne des exigences (E6), on n'ouvre rien.
+        modificateurs = QtWidgets.QApplication.keyboardModifiers()
+        if col != doc_col or modificateurs & (Qt.ControlModifier | Qt.ShiftModifier):
             return
         item = self._tbl_docs.item(row, doc_col)
         if item:
@@ -390,20 +392,28 @@ class DetailPanel(QtWidgets.QFrame):
                 self.requestOpenDoc.emit(str(path))
 
     def _on_doc_context_menu(self, pos: QtCore.QPoint):
-        """Clic droit sur un nom de document (CE / DPE uniquement)."""
+        """Clic droit sur une exigence (CE / DPE uniquement), n'importe quelle colonne."""
+        menu = self.menu_exigence(pos)
+        if menu:
+            menu.exec(self._tbl_docs.viewport().mapToGlobal(pos))
+
+    def menu_exigence(self, pos: QtCore.QPoint) -> QtWidgets.QMenu | None:
+        """Menu du clic droit en `pos`, ou None s'il n'y a rien à proposer."""
         if not self._row_data or self._tbl_docs.columnCount() != 3:
-            return
+            return None
         index = self._tbl_docs.indexAt(pos)
-        if not index.isValid() or index.column() != 2:
-            return
+        if not index.isValid():
+            return None
         item = self._tbl_docs.item(index.row(), 2)
-        if not item or not item.text():
-            return
+        if not item:
+            return None
         path = str(item.data(Qt.UserRole) or "")
         code = str(item.data(self._CODE_ROLE) or "")
-        if not code:
-            return
+        documentee = bool(code and path)
         codes = self.codes_selectionnes(index.row())
+        # Rien à ouvrir, remplacer ni supprimer : c'est « Importer » qui sert.
+        if not any(self._a_un_document(lg) for lg in self._lignes_ciblees(index.row())):
+            return None
 
         menu = QtWidgets.QMenu(self._tbl_docs)
         # Fond explicite : sinon le menu hérite du « background:transparent »
@@ -427,14 +437,13 @@ class DetailPanel(QtWidgets.QFrame):
         """)
         row_data = self._row_data
         act_open = menu.addAction("Ouvrir le document")
-        act_open.setEnabled(bool(path))
+        act_open.setEnabled(documentee)
         act_open.triggered.connect(lambda: self.requestOpenDoc.emit(path))
         libelle = "Remplacer le justificatif…"
         if len(codes) > 1:
             libelle = f"Remplacer le justificatif ({len(codes)} exigences)…"
         if self.lecture_seule:
-            menu.exec(self._tbl_docs.viewport().mapToGlobal(pos))
-            return
+            return menu
         menu.addAction(libelle).triggered.connect(
             lambda: self.requestReplaceJustif.emit(row_data, codes)
         )
@@ -454,7 +463,8 @@ class DetailPanel(QtWidgets.QFrame):
         act_delete = QtWidgets.QWidgetAction(menu)
         act_delete.setDefaultWidget(delete_lbl)
         act_delete.triggered.connect(lambda: self.requestDeleteJustif.emit(row_data, code))
-        menu.addAction(act_delete)
+        if documentee:  # supprimer vise l'exigence cliquée, qui doit avoir un document
+            menu.addAction(act_delete)
 
         def _on_delete_clicked(_event):
             menu.close()
@@ -462,22 +472,26 @@ class DetailPanel(QtWidgets.QFrame):
             QtCore.QTimer.singleShot(0, act_delete.trigger)
 
         delete_lbl.mouseReleaseEvent = _on_delete_clicked
-
-        menu.exec(self._tbl_docs.viewport().mapToGlobal(pos))
+        return menu
 
     def codes_selectionnes(self, ligne_cliquee: int) -> list[str]:
         """Codes des exigences sélectionnées ; la ligne cliquée seule si elle
         n'est pas dans la sélection (E6)."""
-        lignes = sorted({i.row() for i in self._tbl_docs.selectionModel().selectedRows()})
-        if ligne_cliquee not in lignes:
-            lignes = [ligne_cliquee]
         codes = []
-        for ligne in lignes:
+        for ligne in self._lignes_ciblees(ligne_cliquee):
             item = self._tbl_docs.item(ligne, 2)
             code = str(item.data(self._CODE_ROLE) or "") if item else ""
             if code:
                 codes.append(code)
         return codes
+
+    def _lignes_ciblees(self, ligne_cliquee: int) -> list[int]:
+        lignes = sorted({i.row() for i in self._tbl_docs.selectionModel().selectedRows()})
+        return lignes if ligne_cliquee in lignes else [ligne_cliquee]
+
+    def _a_un_document(self, ligne: int) -> bool:
+        item = self._tbl_docs.item(ligne, 2)
+        return bool(item and item.data(Qt.UserRole))
 
     def _on_modify(self):
         if self._row_data:
