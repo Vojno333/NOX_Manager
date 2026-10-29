@@ -108,9 +108,9 @@ S1 à S10 et S27 conformes à la main ; S11 à S26 couverts par les tests automa
 | V6 | E8, E9, E11, E13 | Exporter, ouvrir les Excel | Titre « BASE DE DONNEES CE - N999 », onglet « BDD CE N999 » ; CECC : D = MNP de l'article, H = MPN de la fiche ; liens cliquables, qui marchent encore après avoir copié tout `evolutions` ailleurs |  ✅ | |
 | V7 | E14 | Ouvrir `evolutions_verrou` | Message « Projet ouvert en modification par collegue.test sur le poste PC-COLLEGUE… » ; titre « — lecture seule » ; boutons de modification grisés ; Ouvrir un document et Exporter possibles |  ✅ | |
 | V8 | E14 | Ouvrir `evolutions`, regarder dans son dossier `.nox`, puis fermer la fenêtre du projet | Pendant l'ouverture : un fichier `verrou.json` ; après la fermeture : il a disparu |  ✅ | |
-| V9 | E1 | Avec `NOX_Manager_E1`, ouvrir `evolutions_E1` | ACME / REF-001 apparaît sur deux lignes (CMD-1 à 67 %, CMD-1B à 0 %) |  — | Non joué : E1 reste désactivée (`lignes_multiples` à `false`) jusqu'à la fin de la diffusion ; couvert par les tests automatiques (`test_lignes_multiples.py`) |
-| V10 | E1 | Importer `rapport.pdf` pour la ligne CMD-1B en CE, puis exporter | Fichier rangé dans `…\ACME\REF-001\CMD-1B\` ; CMD-1 reste à 67 % ; l'Excel CE a deux lignes REF-001 (CMD-1 et CMD-1B) |  — | Non joué : E1 reste désactivée (`lignes_multiples` à `false`) jusqu'à la fin de la diffusion ; couvert par les tests automatiques (`test_lignes_multiples.py`) |
+| V9 | E1 | Avec `NOX_Manager_E1`, ouvrir `evolutions_E1` | ACME / REF-001 apparaît sur deux lignes (CMD-1 à 67 %, CMD-1B à 0 %) || ✅ | Joué avec `Recette NOX\NOX_Manager_E1` (`lignes_multiples` à `true`) |
+| V10 | E1 | Importer `rapport.pdf` pour la ligne CMD-1B en CE, puis exporter | Fichier rangé dans `…\ACME\REF-001\CMD-1B\` ; CMD-1 reste à 67 % ; l'Excel CE a deux lignes REF-001 (CMD-1 et CMD-1B) || ✅ | Joué avec `Recette NOX\NOX_Manager_E1` (`lignes_multiples` à `true`) |
 
 ### Bilan des évolutions (2026-10-29)
 
-V1 à V8 conformes à la main (V4 après la correction de la tâche 39). V9 et V10 (E1) non joués : E1 est livrée désactivée et couverte par les tests automatiques ; à jouer avant de passer `lignes_multiples` à `true` sur les postes.
+V1 à V10 conformes à la main (V4 après la correction de la tâche 39 ; V9 et V10 avec une copie de l'exécutable où E1 est activée). E1 reste livrée désactivée : elle s'active sur tous les postes à la fois, quand l'ancienne application n'est plus utilisée (décision 0005).
