@@ -4,8 +4,8 @@
 - Suivi des travaux : interne
 - Palier : P2 (application de bureau PySide6, hors catalogue — décision 0002)
 - Version de la méthode : 1.0
-- Étape en cours : R8 terminée — toutes les tâches de `docs/travaux.md` sont faites ; suite : livraison
-- Dernière mise à jour : 2026-10-28
+- Étape en cours : R8 terminée — tâches faites, évolutions recettées ; suite : livraison
+- Dernière mise à jour : 2026-10-29
 
 ## Fait
 - R1 Indexer l'existant — `docs/diagnostic/arborescence.md` (≈ 2 400 lignes sur 10 300 hors périmètre, règle du tri-état écrite en trois exemplaires)
@@ -29,10 +29,10 @@
 - Tâche 23 faite le 2026-10-28 (accord de l'utilisateur) : `00_ancien/` supprimé, ancien code conservé sous l'étiquette `v1-avant-refonte` ; `AGENTS.md`, `README.md` et les docstrings y renvoient. **Reconstruction terminée.**
 
 - Évolutions faites le 2026-10-28 (une branche et un commit par tâche, référence `attendu/` mise à jour dans la tâche) : E5 (25), E8 (26), E2 (27), E6 (28), E9 (29), E3 (30), E7 (31, corrige l'écart M3 de la recette), E11 (33), E4 (34), E13 (35), E10 (36), E14 (24, décision 0004 : lecture seule stricte), E12 (32), E1 (37–38, décision 0005 : désactivée par défaut, interrupteur `lignes_multiples`). 140 tests au vert.
+- Recette des évolutions le 2026-10-29 (`docs/recette.md`, section 8, V1–V10) : tout conforme. Un défaut trouvé en V4 (E6, clic droit « Remplacer ») corrigé par la tâche 39 (`dev/fix/39`). E1 jouée avec une copie de l'exécutable (`Recette NOX\NOX_Manager_E1`). 141 tests au vert.
 
 ## Reste à faire
 - Livraison par le référent technique (`docs/livraison.md`) : diffusion poste par poste par l'utilisateur ; quand plus aucun poste n'a l'ancienne application, passer `lignes_multiples` à `true` partout.
-- Recette des évolutions avec l'utilisateur (non faite : seules les règles R ont été recettées).
 
 ## Écarts et constats relevés pendant la reconstruction (à valider en recette)
 - **R7, fichier glissé-déposé** : l'ancienne application ne contrôlait le format que dans le sélecteur de fichier ; un fichier glissé passait sans contrôle. Le contrôle est maintenant fait aussi au dépôt (R7 et AGENTS §7).
